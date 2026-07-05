@@ -26,3 +26,26 @@ test('loads posts and renders them in the feed', async () => {
   await waitFor(() => expect(postsApi.listPosts).toHaveBeenCalled())
   expect(await screen.findByText(/Missing: cat/)).toBeInTheDocument()
 })
+
+test('renders a radius filter input defaulted to 50km', async () => {
+  render(
+    <MemoryRouter>
+      <BrowseFeedPage />
+    </MemoryRouter>
+  )
+
+  await waitFor(() => expect(postsApi.listPosts).toHaveBeenCalled())
+  expect(screen.getByLabelText('Radius (km)')).toHaveValue(50)
+})
+
+test('shows an error message when posts fail to load', async () => {
+  postsApi.listPosts.mockRejectedValueOnce(new Error('Network error'))
+
+  render(
+    <MemoryRouter>
+      <BrowseFeedPage />
+    </MemoryRouter>
+  )
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Network error')
+})

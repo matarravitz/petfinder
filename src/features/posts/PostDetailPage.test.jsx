@@ -41,3 +41,11 @@ test('non-owner does not see a resolve button', async () => {
   await waitFor(() => screen.getByText(/Missing: cat/))
   expect(screen.queryByText('Mark as resolved')).not.toBeInTheDocument()
 })
+
+test('shows an error message when the post fails to load', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockRejectedValueOnce(new Error('Post not found'))
+  renderAtPost('missing-post')
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Post not found')
+})

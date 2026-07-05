@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 export default function PostCard({ post }) {
   return (
     <article>
@@ -8,7 +10,7 @@ export default function PostCard({ post }) {
       <p>Location: {post.location_text}</p>
       {post.distanceKm != null && <p>{post.distanceKm.toFixed(1)} km away</p>}
       {post.reward_amount && <p>Reward: {post.reward_amount}</p>}
-      <a href={`/post/${post.id}`}>View details</a>
+      <Link to={`/post/${post.id}`}>View details</Link>
     </article>
   )
 }

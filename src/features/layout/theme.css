@@ -76,6 +76,32 @@ body {
   opacity: 0.85;
 }
 
+.app-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.app-nav-link,
+.app-nav-button {
+  font-family: var(--font-family-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-primary-contrast);
+  text-decoration: none;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.app-nav-link:hover,
+.app-nav-button:hover {
+  text-decoration: underline;
+}
+
 .app-main {
   max-width: 960px;
   margin: 0 auto;

@@ -8,11 +8,15 @@ export default function PostDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
   const [post, setPost] = useState(null)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
-    getPost(supabase, id).then(setPost)
+    getPost(supabase, id)
+      .then(setPost)
+      .catch((err) => setError(err.message))
   }, [id])
 
+  if (error) return <p role="alert">{error}</p>
   if (!post) return <p>Loading...</p>
 
   const isOwner = user && user.id === post.owner_id
