@@ -1,7 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import App from './App.jsx'
 
-test('renders the PetFinder app shell', () => {
+vi.mock('./lib/supabaseClient.js', () => ({
+  supabase: {
+    auth: {
+      getSession: vi.fn(() => Promise.resolve({ data: { session: null } })),
+      onAuthStateChange: vi.fn(() => ({ data: { subscription: { unsubscribe: vi.fn() } } })),
+    },
+  },
+}))
+vi.mock('./features/posts/postsApi.js', () => ({ listPosts: vi.fn(() => Promise.resolve([])) }))
+vi.mock('./lib/geolocation.js', () => ({ getUserLocation: vi.fn(() => Promise.reject(new Error('no geo'))) }))
+
+test('renders the browse feed at the root route', async () => {
   render(<App />)
-  expect(screen.getByText('PetFinder')).toBeInTheDocument()
+  expect(await screen.findByText('Missing & found pets near you')).toBeInTheDocument()
 })
