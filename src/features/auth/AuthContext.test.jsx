@@ -39,4 +39,7 @@ test('signUp creates the auth user and a matching profile row', async () => {
 
   expect(supabase.auth.signUp).toHaveBeenCalledWith({ email: 'a@example.com', password: 'password123' })
   expect(supabase.from).toHaveBeenCalledWith('profiles')
+
+  const profilesInsert = supabase.from.mock.results[0].value.insert
+  expect(profilesInsert).toHaveBeenCalledWith({ id: 'u1', display_name: 'Ada' })
 })
