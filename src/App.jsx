@@ -7,6 +7,7 @@ import SignupPage from './features/auth/SignupPage.jsx'
 import BrowseFeedPage from './features/posts/BrowseFeedPage.jsx'
 import CreatePostForm from './features/posts/CreatePostForm.jsx'
 import PostDetailPage from './features/posts/PostDetailPage.jsx'
+import MessagesPage from './features/messages/MessagesPage.jsx'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/post/new" element={<CreatePostForm />} />
             <Route path="/post/:id" element={<PostDetailPage />} />
+            <Route path="/messages" element={<MessagesPage />} />
           </Routes>
         </Layout>
       </BrowserRouter>

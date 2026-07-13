@@ -27,6 +27,11 @@ export default function Layout({ children }) {
               <Link className={navLinkClass('/post/new')} to="/post/new">
                 Report a pet
               </Link>
+              {user && (
+                <Link className={navLinkClass('/messages')} to="/messages">
+                  Messages
+                </Link>
+              )}
             </div>
             <div className="app-nav-auth">
               {user ? (
