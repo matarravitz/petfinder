@@ -51,20 +51,30 @@ SUPABASE_SERVICE_ROLE_KEY=<from `supabase status`>  # scripts/*.mjs only; never 
 public/favicon.svg           # paw-print favicon, reuses PawPrintIcon's exact path data
 index.html                   # links favicon.svg; <title>PetFinder</title>
 src/
-  App.jsx                    # routes: / /browse /login /signup /post/new /post/:id
+  App.jsx                    # routes: / /browse /login /signup /post/new /post/:id /messages
   features/
-    auth/                    # AuthContext, LoginPage, SignupPage
+    auth/                    # AuthContext, LoginPage, SignupPage — password show/hide toggle,
+                              # confirm-password field (signup only), .auth-page/.auth-card/
+                              # .password-input CSS pattern, redirect-after-login (see Gotchas)
     home/HomePage.jsx        # hero, "how it works", recently-posted preview, reunited-count stat
     layout/
       Layout.jsx             # header/nav (active-tab via useLocation)
       theme.css              # THE single global stylesheet — all design tokens live here
       PawPrintIcon.jsx       # one hand-drawn SVG touch, used sparingly (see Design system below)
+    messages/                # in-site chat — MOCK DATA ONLY, no backend (see docs/features/messaging.md)
+      MessagesPage.jsx       # split-pane inbox at /messages; owns conversations state, reads
+                              # location.state to open/create a thread (see Gotchas)
+      ConversationList.jsx / ConversationRow.jsx   # list pane; row has select + delete buttons
+                              # as siblings, not nested (see Gotchas)
+      ThreadPane.jsx / MessageBubble.jsx           # thread pane; bubbles styled by fromMe
+      mockConversations.js   # createInitialConversations() factory + formatPostReference()
     posts/
       BrowseFeedPage.jsx     # type/species filters, radius slider, "show all" toggle
       PostCard.jsx           # whole card is a single <Link> to /post/:id (see Gotchas)
       CreatePostForm.jsx     # report a missing/found pet
       LocationPicker.jsx     # Leaflet map + live geocoding search (see Gotchas)
-      PostDetailPage.jsx     # fixed-grid detail fields, resolve action
+      PostDetailPage.jsx     # fixed-grid detail fields, resolve action, Contact publisher button
+                              # (navigates to /messages with location.state — see Gotchas)
       postsApi.js            # listPosts/getPost/createPost/resolvePost (supabase queries)
       buildPostPayload.js    # pure function: form state -> DB insert payload
       filterPosts.js         # pure function: filterAndSortPosts(posts, filters)
@@ -74,14 +84,17 @@ src/
     geolocation.js           # wraps navigator.geolocation in a Promise
     distance.js              # haversine distance helper
   testUtils/fakeSupabase.js  # chainable/thenable fake supabase client for tests
-supabase/migrations/         # 0001_init (schema+RLS), 0002_storage, 0003_grants (see Gotchas)
+supabase/migrations/         # 0001_init (schema+RLS), 0002_storage, 0003_grants (see Gotchas),
+                              # 0004_posts_phone_number
 scripts/seed-test-posts.mjs  # seeds demo posts with real fetched photos
 scripts/verify-schema.mjs    # schema/RLS sanity check (see Commands)
 ```
 
 ## Database schema (posts table, see `supabase/migrations/0001_init.sql`)
 
-`type` (enum: missing/found) · `species` · `breed` · `color` · `size` · `collar` (bool) + `collar_description` · `microchipped` (enum: yes/no/unknown) · `distinctive_markings` · `pet_name` · `reward_amount` (numeric, missing-only) · `location_lat`/`location_lng`/`location_text` · `date_lost_or_found` · `status` (enum: active/resolved) · `owner_id` → `profiles`. RLS: everyone can read; only owners can insert/update/delete their own posts.
+`type` (enum: missing/found) · `species` · `breed` · `color` · `size` · `collar` (bool) + `collar_description` · `microchipped` (enum: yes/no/unknown) · `distinctive_markings` · `pet_name` · `reward_amount` (numeric, missing-only) · `phone_number` (nullable text, optional) · `location_lat`/`location_lng`/`location_text` · `date_lost_or_found` · `status` (enum: active/resolved) · `owner_id` → `profiles`. RLS: everyone can read; only owners can insert/update/delete their own posts.
+
+There is **no `messages`/`conversations` table** — the in-site chat feature is mock-data-only (see Architecture above and `docs/features/messaging.md`). Don't assume a schema exists for it.
 
 `buildPostPayload(formValues, ownerId)` is the single place form state maps to this schema — check it before adding a new form field.
 
@@ -103,6 +116,10 @@ Vitest + `@testing-library/react` + `@testing-library/user-event`. `vi.mock()` p
 
 `URL.createObjectURL`/`revokeObjectURL` aren't implemented in jsdom — stub via `vi.stubGlobal('URL', {...})` if a test needs photo preview URLs, and don't manually `vi.unstubAllGlobals()` before RTL's unmount cleanup runs (it'll throw when the component's cleanup calls `revokeObjectURL`).
 
+Destructive-action confirmations use the browser's native `window.confirm()` (no custom modal component exists in this app) — test with `vi.spyOn(window, 'confirm').mockReturnValue(true/false)`, and `.mockRestore()` it at the end of the test (see `ConversationRow.test.jsx`, `ConversationList.test.jsx`, `MessagesPage.test.jsx` for the pattern).
+
+Router-state assertions (e.g. redirect-after-login) need an actual `<Routes>`/`<Route>` pair inside `MemoryRouter`, not just the component alone — render both the source and destination routes and assert on the destination's content after the action (see `LoginPage.test.jsx`/`SignupPage.test.jsx`).
+
 ## Gotchas
 
 - **Remote VM access**: the app runs on a remote VM, accessed via `ssh -L 5173:localhost:5173 ubuntu@<vm-ip>`. Only port 5173 needs tunneling — `vite.config.js`'s `server.proxy` forwards `/rest/v1`, `/auth/v1`, `/storage/v1`, `/realtime/v1`, `/functions/v1` to `http://127.0.0.1:54321` (local Supabase), so `supabaseClient.js` and `photoUrl.js` both use `window.location.origin` instead of a separate hardcoded Supabase URL. Don't revert this to a direct Supabase URL/port.
@@ -117,3 +134,4 @@ Vitest + `@testing-library/react` + `@testing-library/user-event`. `vi.mock()` p
 - **`supabase db reset` wipes seeded data**: it drops and replays every migration from scratch — fine for schema changes, but it also deletes anything inserted outside a migration, including the demo posts from `scripts/seed-test-posts.mjs`. After running `db reset` (e.g. to apply a new migration locally), re-run `nvm exec 22 node scripts/seed-test-posts.mjs` or the browse/home pages will look empty. This already happened once (Task 1 of the messaging feature ran `db reset` and silently wiped all seeded posts).
 - **Redirect-after-login pattern**: any nav link/action that should work whether or not the user is logged in (e.g. "Messages") should still render when logged out, but point at `/login` with router state `{ from: '<target path>' }` instead of hiding itself. `LoginPage`/`SignupPage` both read `location.state?.from` and `navigate(from)` after a successful sign in/up (falling back to `/`), and forward that same state through the Log in ↔ Sign up switch link so either auth path redirects correctly. Reuse this pattern for future protected actions rather than inventing a new one.
 - **`ConversationRow` is a wrapper div with two sibling buttons, not one button**: it needs both a "select this conversation" click target and a "delete" click target, and a `<button>` cannot contain another `<button>` (invalid HTML — same class of bug as the `PostCard`/`Link` nesting issue above). `.conversation-row` (div) → `.conversation-row-select` (button) + `.conversation-row-delete` (button), siblings, not nested.
+- **`MessagesPage`'s `setActiveId` call is deliberately nested inside the `setConversations` updater** (in the `location.state`-driven open/create effect) — looks like it could be pulled out, but don't: `src/main.jsx` wraps the app in `<StrictMode>`, which double-invokes effects in dev, and only reading the just-created conversation back out of `prev` (the updater's own argument) lets the second invocation take the "already exists" branch instead of creating a duplicate thread. Pulling `setActiveId` out and computing `existing` from the `conversations` state variable directly would reintroduce a duplicate-conversation bug under StrictMode.
