@@ -12,7 +12,9 @@ vi.mock('./lib/supabaseClient.js', () => ({
 vi.mock('./features/posts/postsApi.js', () => ({ listPosts: vi.fn(() => Promise.resolve([])) }))
 vi.mock('./lib/geolocation.js', () => ({ getUserLocation: vi.fn(() => Promise.reject(new Error('no geo'))) }))
 
-test('renders the browse feed at the root route', async () => {
+test('renders the home page at the root route', async () => {
   render(<App />)
-  expect(await screen.findByText('Missing & found pets near you')).toBeInTheDocument()
+  expect(
+    await screen.findByText('Reunite lost pets with the people looking for them')
+  ).toBeInTheDocument()
 })

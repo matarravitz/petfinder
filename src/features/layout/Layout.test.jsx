@@ -21,6 +21,20 @@ test('renders the app header and its children', () => {
   expect(screen.getByText('page content')).toBeInTheDocument()
 })
 
+test('the PetFinder title always links back to home', () => {
+  useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
+
+  render(
+    <MemoryRouter>
+      <Layout>
+        <p>page content</p>
+      </Layout>
+    </MemoryRouter>
+  )
+
+  expect(screen.getByRole('link', { name: 'PetFinder' })).toHaveAttribute('href', '/')
+})
+
 test('shows log in and sign up links when logged out', () => {
   useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
 
@@ -32,11 +46,45 @@ test('shows log in and sign up links when logged out', () => {
     </MemoryRouter>
   )
 
-  expect(screen.getByRole('link', { name: 'Browse' })).toHaveAttribute('href', '/')
+  expect(screen.getByRole('link', { name: 'Browse' })).toHaveAttribute('href', '/browse')
   expect(screen.getByRole('link', { name: 'Report a pet' })).toHaveAttribute('href', '/post/new')
   expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
   expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup')
   expect(screen.queryByRole('button', { name: 'Log out' })).not.toBeInTheDocument()
+})
+
+test('has no tagline, and keeps auth links visually separate from primary nav', () => {
+  useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
+
+  render(
+    <MemoryRouter>
+      <Layout>
+        <p>page content</p>
+      </Layout>
+    </MemoryRouter>
+  )
+
+  expect(screen.queryByText('Every lost pet has someone looking for them.')).not.toBeInTheDocument()
+
+  const browseLink = screen.getByRole('link', { name: 'Browse' })
+  const loginLink = screen.getByRole('link', { name: 'Log in' })
+  expect(browseLink.closest('.app-nav-primary')).not.toBeNull()
+  expect(loginLink.closest('.app-nav-auth')).not.toBeNull()
+})
+
+test('marks the current page active in the nav', () => {
+  useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
+
+  render(
+    <MemoryRouter initialEntries={['/browse']}>
+      <Layout>
+        <p>page content</p>
+      </Layout>
+    </MemoryRouter>
+  )
+
+  expect(screen.getByRole('link', { name: 'Browse' })).toHaveClass('active')
+  expect(screen.getByRole('link', { name: 'Report a pet' })).not.toHaveClass('active')
 })
 
 test('shows a log out control instead of log in/sign up when a user is present', async () => {
