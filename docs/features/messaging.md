@@ -1,6 +1,6 @@
 # Feature: In-site messaging
 
-**Status:** design approved, visual-only prototype not yet implemented.
+**Status:** implemented (visual-only prototype — see Non-goals).
 **Last updated:** 2026-07-13
 
 ## Goal
@@ -49,25 +49,29 @@ One page, two panes, shown together:
 
 ```js
 // mockConversations.js
-export const initialConversations = [
-  {
-    id: 'conv-1',
-    postId: '<an existing seeded post id>',
-    postSummary: { type: 'missing', species: 'cat', petName: 'Milo', photoUrl: '/path/to/photo' },
-    otherUser: { id: 'u-dana', displayName: 'Dana' },
-    unread: true,
-    messages: [
-      { id: 'm1', fromMe: false, text: 'Hi, I think I saw her near the park', sentAt: '2026-07-12T14:10:00Z' },
-      { id: 'm2', fromMe: true, text: 'Really?! Which park?', sentAt: '2026-07-12T14:14:00Z' },
-    ],
-  },
-  // 2-3 fixture conversations total, tied to existing seeded demo posts
-]
+export function createInitialConversations() {
+  return [
+    {
+      id: 'conv-1',
+      postId: 'post-milo',
+      postSummary: { type: 'missing', species: 'cat', petName: 'Milo', photoUrl: null },
+      otherUser: { id: 'user-dana', displayName: 'Dana' },
+      unread: true,
+      messages: [
+        { id: 'm1', fromMe: false, text: 'Hi, I think I saw her near the park', sentAt: '2026-07-12T14:10:00Z' },
+        { id: 'm2', fromMe: true, text: 'Really?! Which park?', sentAt: '2026-07-12T14:14:00Z' },
+      ],
+    },
+    // 2-3 fixture conversations total, tied to existing seeded demo posts
+  ]
+}
 ```
+
+Exported as a function (not a plain array constant) so every call returns a fresh array — `MessagesPage` calls it as the `useState` initializer, and a shared mutable export would let mutations from one test/session leak into another.
 
 `fromMe: boolean` (not a real user id) keeps bubble styling simple since nothing here is tied to real auth state — this is fixture data, not persisted per-user data.
 
-`MessagesPage` holds `conversations` in `useState(initialConversations)`; sending a message or opening a new thread from "Contact publisher" only updates this in-memory state. A page reload reverts to the fixture list — documented, expected behavior for this pass, not a bug.
+`MessagesPage` holds `conversations` in `useState(createInitialConversations)`; sending a message or opening a new thread from "Contact publisher" only updates this in-memory state. A page reload reverts to the fixture list — documented, expected behavior for this pass, not a bug.
 
 ## "Contact publisher" button
 

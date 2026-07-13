@@ -34,7 +34,7 @@ export default function PostDetailPage() {
     navigate('/messages', {
       state: {
         openPostId: post.id,
-        otherUser: { id: post.owner_id, displayName: post.profiles?.display_name },
+        otherUser: { id: post.owner_id, displayName: post.profiles?.display_name ?? null },
         postSummary: {
           type: post.type,
           species: post.species,
