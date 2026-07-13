@@ -42,6 +42,95 @@ test('non-owner does not see a resolve button', async () => {
   expect(screen.queryByText('Mark as resolved')).not.toBeInTheDocument()
 })
 
+test('shows full post fields and photos when present', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p2',
+    owner_id: 'owner-1',
+    type: 'missing',
+    species: 'cat',
+    breed: 'Tabby',
+    color: 'orange',
+    size: 'small',
+    collar: true,
+    collar_description: 'blue collar',
+    microchipped: 'yes',
+    distinctive_markings: 'white paw',
+    pet_name: 'Milo',
+    reward_amount: 100,
+    location_text: 'Tel Aviv',
+    date_lost_or_found: '2026-07-01',
+    status: 'active',
+    post_photos: [{ id: 'photo-1', storage_path: 'p2/photo.svg' }],
+  })
+  renderAtPost('p2')
+
+  await waitFor(() => screen.getByText(/Missing: cat — Milo/))
+  expect(screen.getByText('Tabby')).toBeInTheDocument()
+  expect(screen.getByText('orange')).toBeInTheDocument()
+  expect(screen.getByText('blue collar')).toBeInTheDocument()
+  expect(screen.getByText('Reward: ₪100')).toBeInTheDocument()
+  const photo = screen.getByRole('img')
+  expect(photo).toHaveAttribute('src', expect.stringContaining('p2/photo.svg'))
+})
+
+test('shows a placeholder for optional fields the poster left blank, in a fixed order', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p5',
+    owner_id: 'owner-1',
+    type: 'found',
+    species: 'dog',
+    microchipped: 'unknown',
+    collar: false,
+    location_text: 'Tel Aviv',
+    date_lost_or_found: '2026-07-01',
+    status: 'active',
+    post_photos: [],
+  })
+  renderAtPost('p5')
+
+  await waitFor(() => screen.getByText(/Found: dog/))
+  expect(screen.getByText('Breed')).toBeInTheDocument()
+  expect(screen.getByText('Color')).toBeInTheDocument()
+  expect(screen.getByText('Size')).toBeInTheDocument()
+  expect(screen.getByText('Distinctive markings')).toBeInTheDocument()
+  expect(screen.getAllByText('—')).toHaveLength(4)
+})
+
+test('shows who posted it, when known', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p3',
+    owner_id: 'owner-1',
+    type: 'found',
+    species: 'dog',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+    profiles: { display_name: 'Dana' },
+  })
+  renderAtPost('p3')
+
+  expect(await screen.findByText('Posted by Dana')).toBeInTheDocument()
+})
+
+test('shows a reunited celebration banner for a resolved post', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p4',
+    owner_id: 'owner-1',
+    type: 'missing',
+    species: 'cat',
+    pet_name: 'Milo',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+    status: 'resolved',
+  })
+  renderAtPost('p4')
+
+  expect(await screen.findByText(/Milo has been reunited with their family/)).toBeInTheDocument()
+})
+
 test('shows an error message when the post fails to load', async () => {
   useAuth.mockReturnValue({ user: null })
   postsApi.getPost.mockRejectedValueOnce(new Error('Post not found'))

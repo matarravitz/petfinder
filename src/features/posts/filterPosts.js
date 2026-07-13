@@ -4,6 +4,7 @@ export function filterAndSortPosts(posts, filters) {
   const {
     userLocation,
     radiusKm,
+    type,
     species,
     breed,
     color,
@@ -17,6 +18,7 @@ export function filterAndSortPosts(posts, filters) {
 
   return posts
     .filter((post) => (status ? post.status === status : true))
+    .filter((post) => (type && type !== 'all' ? post.type === type : true))
     .filter((post) => (species ? post.species === species : true))
     .filter((post) => (breed ? post.breed?.toLowerCase().includes(breed.toLowerCase()) : true))
     .filter((post) => (color ? post.color === color : true))

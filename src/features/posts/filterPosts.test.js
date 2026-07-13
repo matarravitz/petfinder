@@ -1,11 +1,21 @@
 import { filterAndSortPosts } from './filterPosts.js'
 
 const posts = [
-  { id: 'near', species: 'cat', collar: true, reward_amount: 50, status: 'active', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
-  { id: 'far', species: 'cat', collar: false, reward_amount: null, status: 'active', date_lost_or_found: '2026-06-01', location_lat: 40, location_lng: 40 },
-  { id: 'resolved', species: 'cat', collar: true, reward_amount: null, status: 'resolved', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
-  { id: 'dog', species: 'dog', collar: true, reward_amount: null, status: 'active', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
+  { id: 'near', type: 'missing', species: 'cat', collar: true, reward_amount: 50, status: 'active', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
+  { id: 'far', type: 'missing', species: 'cat', collar: false, reward_amount: null, status: 'active', date_lost_or_found: '2026-06-01', location_lat: 40, location_lng: 40 },
+  { id: 'resolved', type: 'missing', species: 'cat', collar: true, reward_amount: null, status: 'resolved', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
+  { id: 'dog', type: 'found', species: 'dog', collar: true, reward_amount: null, status: 'active', date_lost_or_found: '2026-07-01', location_lat: 32.08, location_lng: 34.78 },
 ]
+
+test('filters by type (missing/found)', () => {
+  const result = filterAndSortPosts(posts, { type: 'found' })
+  expect(result.map((p) => p.id)).toEqual(['dog'])
+})
+
+test('"all" type shows both missing and found', () => {
+  const result = filterAndSortPosts(posts, { type: 'all' })
+  expect(result.map((p) => p.id).sort()).toEqual(['dog', 'far', 'near'])
+})
 
 test('excludes resolved posts by default', () => {
   const result = filterAndSortPosts(posts, {})

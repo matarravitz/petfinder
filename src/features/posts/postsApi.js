@@ -1,7 +1,7 @@
 export async function listPosts(supabase) {
   const { data, error } = await supabase
     .from('posts')
-    .select('*, post_photos(*)')
+    .select('*, post_photos(*), profiles(display_name)')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
@@ -10,7 +10,7 @@ export async function listPosts(supabase) {
 export async function getPost(supabase, postId) {
   const { data, error } = await supabase
     .from('posts')
-    .select('*, post_photos(*)')
+    .select('*, post_photos(*), profiles(display_name)')
     .eq('id', postId)
     .single()
   if (error) throw error
