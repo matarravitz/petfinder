@@ -6,6 +6,12 @@ import PostDetailPage from './PostDetailPage.jsx'
 import * as postsApi from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom')
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 vi.mock('./postsApi.js', () => ({
   getPost: vi.fn(() =>
     Promise.resolve({ id: 'p1', owner_id: 'owner-1', type: 'missing', species: 'cat', location_text: 'Tel Aviv', post_photos: [] })
@@ -155,4 +161,46 @@ test('shows an error message when the post fails to load', async () => {
   renderAtPost('missing-post')
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Post not found')
+})
+
+test('shows a Contact publisher button for a logged-in non-owner and navigates to /messages', async () => {
+  useAuth.mockReturnValue({ user: { id: 'someone-else' } })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p7',
+    owner_id: 'owner-1',
+    type: 'missing',
+    species: 'cat',
+    pet_name: 'Milo',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+    profiles: { display_name: 'Dana' },
+  })
+  renderAtPost('p7')
+
+  const button = await screen.findByRole('button', { name: 'Contact publisher' })
+  await userEvent.click(button)
+
+  expect(mockNavigate).toHaveBeenCalledWith('/messages', {
+    state: {
+      openPostId: 'p7',
+      otherUser: { id: 'owner-1', displayName: 'Dana' },
+      postSummary: { type: 'missing', species: 'cat', petName: 'Milo', photoUrl: null },
+    },
+  })
+})
+
+test('does not show a Contact publisher button for the post owner', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  renderAtPost('p1')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  expect(screen.queryByRole('button', { name: 'Contact publisher' })).not.toBeInTheDocument()
+})
+
+test('does not show a Contact publisher button when logged out', async () => {
+  useAuth.mockReturnValue({ user: null })
+  renderAtPost('p1')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  expect(screen.queryByRole('button', { name: 'Contact publisher' })).not.toBeInTheDocument()
 })

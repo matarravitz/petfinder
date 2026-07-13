@@ -641,6 +641,20 @@ body {
   margin: 0 0 var(--space-md);
 }
 
+.contact-publisher-button {
+  display: inline-block;
+  font-family: var(--font-family-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-button);
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+  margin-right: var(--space-sm);
+}
+
 /* ---------- Forms ---------- */
 
 .form-page {

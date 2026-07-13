@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
 import { getPost, resolvePost } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
@@ -9,6 +9,7 @@ import PawPrintIcon from '../layout/PawPrintIcon.jsx'
 export default function PostDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [post, setPost] = useState(null)
   const [error, setError] = useState(null)
 
@@ -22,10 +23,26 @@ export default function PostDetailPage() {
   if (!post) return <p>Loading...</p>
 
   const isOwner = user && user.id === post.owner_id
+  const canContact = user && !isOwner
 
   async function handleResolve() {
     await resolvePost(supabase, post.id)
     setPost((prev) => ({ ...prev, status: 'resolved' }))
+  }
+
+  function handleContact() {
+    navigate('/messages', {
+      state: {
+        openPostId: post.id,
+        otherUser: { id: post.owner_id, displayName: post.profiles?.display_name },
+        postSummary: {
+          type: post.type,
+          species: post.species,
+          petName: post.pet_name || null,
+          photoUrl: post.post_photos?.[0] ? buildPhotoUrl(post.post_photos[0].storage_path) : null,
+        },
+      },
+    })
   }
 
   const isMissing = post.type === 'missing'
@@ -103,6 +120,12 @@ export default function PostDetailPage() {
 
       {isMissing && post.reward_amount && (
         <p className="post-detail-reward">Reward: ₪{Number(post.reward_amount).toLocaleString()}</p>
+      )}
+
+      {canContact && (
+        <button type="button" className="contact-publisher-button" onClick={handleContact}>
+          Contact publisher
+        </button>
       )}
 
       {isOwner && post.status !== 'resolved' && (
