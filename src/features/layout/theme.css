@@ -634,7 +634,6 @@ body {
 }
 
 .post-detail-reward {
-  display: inline-block;
   font-weight: 700;
   color: var(--color-accent);
   font-size: 1.1rem;
