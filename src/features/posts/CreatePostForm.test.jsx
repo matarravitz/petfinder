@@ -181,3 +181,26 @@ test('shows a photo preview thumbnail for each selected file', async () => {
   expect(await screen.findByAltText('Selected photo 1')).toHaveAttribute('src', 'blob:preview-url')
   expect(screen.getByText('1 photo selected — click to change')).toBeInTheDocument()
 })
+
+test('phone number is optional and gets submitted when filled in', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'cat')
+  await userEvent.click(screen.getByText('Pick a location (test stub)'))
+  await userEvent.type(screen.getByLabelText('Date lost/found'), '2026-07-01')
+  await userEvent.type(screen.getByLabelText('Phone number (optional)'), '050-1234567')
+  await userEvent.click(screen.getByText('Create post'))
+
+  await waitFor(() => expect(postsApi.createPost).toHaveBeenCalled())
+  expect(postsApi.createPost).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({ phone_number: '050-1234567' }),
+    []
+  )
+})

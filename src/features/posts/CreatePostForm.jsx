@@ -95,6 +95,7 @@ const initialForm = {
   distinctiveMarkings: '',
   petName: '',
   rewardAmount: '',
+  phoneNumber: '',
   dateLostOrFound: '',
 }
 
@@ -332,6 +333,19 @@ export default function CreatePostForm() {
               className="field-input"
               value={form.distinctiveMarkings}
               onChange={(e) => update('distinctiveMarkings', e.target.value)}
+            />
+          </div>
+
+          <div className="field">
+            <label className="field-label" htmlFor="phoneNumber">
+              Phone number (optional)
+            </label>
+            <input
+              id="phoneNumber"
+              className="field-input"
+              type="tel"
+              value={form.phoneNumber}
+              onChange={(e) => update('phoneNumber', e.target.value)}
             />
           </div>
 

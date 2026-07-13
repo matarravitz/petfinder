@@ -95,7 +95,25 @@ test('shows a placeholder for optional fields the poster left blank, in a fixed 
   expect(screen.getByText('Color')).toBeInTheDocument()
   expect(screen.getByText('Size')).toBeInTheDocument()
   expect(screen.getByText('Distinctive markings')).toBeInTheDocument()
-  expect(screen.getAllByText('—')).toHaveLength(4)
+  expect(screen.getByText('Phone')).toBeInTheDocument()
+  expect(screen.getAllByText('—')).toHaveLength(5)
+})
+
+test('shows the phone number as a tel: link when present', async () => {
+  useAuth.mockReturnValue({ user: null })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p6',
+    owner_id: 'owner-1',
+    type: 'found',
+    species: 'dog',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+    phone_number: '050-1234567',
+  })
+  renderAtPost('p6')
+
+  const link = await screen.findByRole('link', { name: '050-1234567' })
+  expect(link).toHaveAttribute('href', 'tel:050-1234567')
 })
 
 test('shows who posted it, when known', async () => {

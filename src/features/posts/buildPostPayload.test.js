@@ -14,6 +14,7 @@ test('maps a missing-pet form to a full post row, including reward and name', ()
       distinctiveMarkings: 'white paw',
       petName: 'Milo',
       rewardAmount: '50',
+      phoneNumber: '050-1234567',
       locationLat: 32.08,
       locationLng: 34.78,
       locationText: 'Tel Aviv',
@@ -35,6 +36,7 @@ test('maps a missing-pet form to a full post row, including reward and name', ()
     distinctive_markings: 'white paw',
     pet_name: 'Milo',
     reward_amount: 50,
+    phone_number: '050-1234567',
     location_lat: 32.08,
     location_lng: 34.78,
     location_text: 'Tel Aviv',
@@ -60,4 +62,20 @@ test('forces pet_name and reward_amount to null for a found-pet post', () => {
 
   expect(payload.pet_name).toBeNull()
   expect(payload.reward_amount).toBeNull()
+})
+
+test('defaults phone_number to null when not provided', () => {
+  const payload = buildPostPayload(
+    {
+      type: 'found',
+      species: 'dog',
+      locationLat: 1,
+      locationLng: 2,
+      locationText: 'somewhere',
+      dateLostOrFound: '2026-07-01',
+    },
+    'owner-2'
+  )
+
+  expect(payload.phone_number).toBeNull()
 })

@@ -581,7 +581,7 @@ body {
   grid-template-areas:
     'location date breed'
     'color size microchipped'
-    'collar markings .';
+    'collar markings phone';
   gap: var(--space-md) var(--space-lg);
   margin: var(--space-md) 0;
 }
@@ -609,6 +609,9 @@ body {
 }
 .field-markings {
   grid-area: markings;
+}
+.field-phone {
+  grid-area: phone;
 }
 
 @media (max-width: 640px) {

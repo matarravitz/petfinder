@@ -13,6 +13,7 @@ export function buildPostPayload(formValues, ownerId) {
     distinctive_markings: formValues.distinctiveMarkings || null,
     pet_name: isMissing ? formValues.petName || null : null,
     reward_amount: isMissing && formValues.rewardAmount ? Number(formValues.rewardAmount) : null,
+    phone_number: formValues.phoneNumber || null,
     location_lat: formValues.locationLat,
     location_lng: formValues.locationLng,
     location_text: formValues.locationText,

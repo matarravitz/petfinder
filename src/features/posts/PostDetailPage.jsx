@@ -95,6 +95,10 @@ export default function PostDetailPage() {
           <dt>Distinctive markings</dt>
           <dd>{post.distinctive_markings || '—'}</dd>
         </div>
+        <div className="post-detail-field field-phone">
+          <dt>Phone</dt>
+          <dd>{post.phone_number ? <a href={`tel:${post.phone_number}`}>{post.phone_number}</a> : '—'}</dd>
+        </div>
       </dl>
 
       {isMissing && post.reward_amount && (
