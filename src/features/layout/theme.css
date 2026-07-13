@@ -961,3 +961,110 @@ body {
   background: var(--color-accent);
   flex-shrink: 0;
 }
+
+/* ---------- Messages: thread pane ---------- */
+
+.thread-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.thread-pane-empty {
+  align-items: center;
+  justify-content: center;
+  color: var(--color-muted);
+}
+
+.thread-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.thread-back-button {
+  display: none;
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  font-family: var(--font-family-body);
+}
+
+.thread-header-avatar,
+.thread-header-avatar-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: calc(var(--radius-button) / 1.6);
+  object-fit: cover;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.thread-header-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.thread-header-post {
+  font-size: 0.75rem;
+  color: var(--color-muted);
+}
+
+.thread-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.message-bubble {
+  max-width: 75%;
+  padding: 6px 12px;
+  border-radius: 12px;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.message-bubble-theirs {
+  align-self: flex-start;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-bottom-left-radius: 2px;
+}
+
+.message-bubble-mine {
+  align-self: flex-end;
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-bottom-right-radius: 2px;
+}
+
+.thread-input-row {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-top: 1px solid var(--color-border);
+}
+
+.thread-input-row .field-input {
+  flex: 1;
+}
+
+.thread-send-button {
+  font-family: var(--font-family-body);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border: none;
+  border-radius: calc(var(--radius-button) / 1.6);
+  padding: 0 var(--space-md);
+  cursor: pointer;
+}
