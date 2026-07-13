@@ -15,14 +15,19 @@ function renderPage() {
   )
 }
 
-test('submits display name, email, and password to signUp', async () => {
+async function fillForm({ displayName = 'Dana', email = 'dana@example.com', password = 'hunter2222', confirmPassword = password } = {}) {
+  await userEvent.type(screen.getByLabelText('Display name'), displayName)
+  await userEvent.type(screen.getByLabelText('Email'), email)
+  await userEvent.type(screen.getByLabelText('Password'), password)
+  await userEvent.type(screen.getByLabelText('Confirm password'), confirmPassword)
+}
+
+test('submits display name, email, and password to signUp when both password fields match', async () => {
   const signUp = vi.fn(() => Promise.resolve())
   useAuth.mockReturnValue({ signUp })
   renderPage()
 
-  await userEvent.type(screen.getByLabelText('Display name'), 'Dana')
-  await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com')
-  await userEvent.type(screen.getByLabelText('Password'), 'hunter2222')
+  await fillForm()
   await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
 
   await waitFor(() =>
@@ -30,14 +35,24 @@ test('submits display name, email, and password to signUp', async () => {
   )
 })
 
+test('shows an error and does not call signUp when passwords do not match', async () => {
+  const signUp = vi.fn(() => Promise.resolve())
+  useAuth.mockReturnValue({ signUp })
+  renderPage()
+
+  await fillForm({ confirmPassword: 'somethingElse1' })
+  await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('Passwords do not match.')
+  expect(signUp).not.toHaveBeenCalled()
+})
+
 test('shows an error message when sign up fails', async () => {
   const signUp = vi.fn(() => Promise.reject(new Error('Email already registered')))
   useAuth.mockReturnValue({ signUp })
   renderPage()
 
-  await userEvent.type(screen.getByLabelText('Display name'), 'Dana')
-  await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com')
-  await userEvent.type(screen.getByLabelText('Password'), 'hunter2222')
+  await fillForm()
   await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Email already registered')
@@ -49,9 +64,7 @@ test('disables the submit button and shows a loading label while submitting', as
   useAuth.mockReturnValue({ signUp })
   renderPage()
 
-  await userEvent.type(screen.getByLabelText('Display name'), 'Dana')
-  await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com')
-  await userEvent.type(screen.getByLabelText('Password'), 'hunter2222')
+  await fillForm()
   await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
 
   const submitButton = screen.getByRole('button', { name: 'Creating account…' })
@@ -61,22 +74,28 @@ test('disables the submit button and shows a loading label while submitting', as
   await waitFor(() => expect(signUp).toHaveBeenCalled())
 })
 
-test('password is hidden by default and can be toggled visible', async () => {
+test('both password fields are hidden by default and toggle together', async () => {
   useAuth.mockReturnValue({ signUp: vi.fn() })
   renderPage()
 
   const passwordInput = screen.getByLabelText('Password')
+  const confirmInput = screen.getByLabelText('Confirm password')
   expect(passwordInput).toHaveAttribute('type', 'password')
+  expect(confirmInput).toHaveAttribute('type', 'password')
 
-  await userEvent.click(screen.getByRole('button', { name: 'Show password' }))
+  const [showToggle] = screen.getAllByRole('button', { name: 'Show password' })
+  await userEvent.click(showToggle)
+
   expect(passwordInput).toHaveAttribute('type', 'text')
+  expect(confirmInput).toHaveAttribute('type', 'text')
 })
 
-test('password field still enforces an 8 character minimum', () => {
+test('password fields still enforce an 8 character minimum', () => {
   useAuth.mockReturnValue({ signUp: vi.fn() })
   renderPage()
 
   expect(screen.getByLabelText('Password')).toHaveAttribute('minLength', '8')
+  expect(screen.getByLabelText('Confirm password')).toHaveAttribute('minLength', '8')
 })
 
 test('links to the login page', () => {
