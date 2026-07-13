@@ -27,8 +27,12 @@ export default function Layout({ children }) {
               <Link className={navLinkClass('/post/new')} to="/post/new">
                 Report a pet
               </Link>
-              {user && (
+              {user ? (
                 <Link className={navLinkClass('/messages')} to="/messages">
+                  Messages
+                </Link>
+              ) : (
+                <Link className={navLinkClass('/messages')} to="/login" state={{ from: '/messages' }}>
                   Messages
                 </Link>
               )}

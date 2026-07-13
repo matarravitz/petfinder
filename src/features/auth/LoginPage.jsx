@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from || '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -17,7 +19,7 @@ export default function LoginPage() {
     setSubmitting(true)
     try {
       await signIn(email, password)
-      navigate('/')
+      navigate(from)
     } catch (err) {
       setError(err.message)
       setSubmitting(false)
@@ -78,7 +80,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="auth-switch">
-          Don't have an account? <Link to="/signup">Sign up</Link>
+          Don't have an account? <Link to="/signup" state={location.state}>Sign up</Link>
         </p>
       </div>
     </div>

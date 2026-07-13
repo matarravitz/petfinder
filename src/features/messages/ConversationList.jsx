@@ -1,6 +1,6 @@
 import ConversationRow from './ConversationRow.jsx'
 
-export default function ConversationList({ conversations, activeId, onSelect }) {
+export default function ConversationList({ conversations, activeId, onSelect, onDelete }) {
   if (conversations.length === 0) {
     return <p className="conversation-list-empty">No conversations yet.</p>
   }
@@ -13,6 +13,7 @@ export default function ConversationList({ conversations, activeId, onSelect }) 
           conversation={conversation}
           active={conversation.id === activeId}
           onClick={onSelect}
+          onDelete={onDelete}
         />
       ))}
     </div>

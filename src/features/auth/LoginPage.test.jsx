@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
 import LoginPage from './LoginPage.jsx'
 import { useAuth } from './AuthContext.jsx'
@@ -75,4 +75,44 @@ test('links to the signup page', () => {
   renderPage()
 
   expect(screen.getByRole('link', { name: 'Sign up' })).toHaveAttribute('href', '/signup')
+})
+
+test('redirects back to the page that required login after signing in', async () => {
+  const signIn = vi.fn(() => Promise.resolve())
+  useAuth.mockReturnValue({ signIn })
+
+  render(
+    <MemoryRouter initialEntries={[{ pathname: '/login', state: { from: '/messages' } }]}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/messages" element={<p>Messages page</p>} />
+      </Routes>
+    </MemoryRouter>
+  )
+
+  await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com')
+  await userEvent.type(screen.getByLabelText('Password'), 'hunter22')
+  await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+
+  expect(await screen.findByText('Messages page')).toBeInTheDocument()
+})
+
+test('defaults to the home page after signing in when there is no redirect target', async () => {
+  const signIn = vi.fn(() => Promise.resolve())
+  useAuth.mockReturnValue({ signIn })
+
+  render(
+    <MemoryRouter initialEntries={['/login']}>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/" element={<p>Home page</p>} />
+      </Routes>
+    </MemoryRouter>
+  )
+
+  await userEvent.type(screen.getByLabelText('Email'), 'dana@example.com')
+  await userEvent.type(screen.getByLabelText('Password'), 'hunter22')
+  await userEvent.click(screen.getByRole('button', { name: 'Log in' }))
+
+  expect(await screen.findByText('Home page')).toBeInTheDocument()
 })

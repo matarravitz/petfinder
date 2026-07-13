@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { vi } from 'vitest'
 import SignupPage from './SignupPage.jsx'
 import { useAuth } from './AuthContext.jsx'
@@ -103,4 +103,23 @@ test('links to the login page', () => {
   renderPage()
 
   expect(screen.getByRole('link', { name: 'Log in' })).toHaveAttribute('href', '/login')
+})
+
+test('redirects back to the page that required login after signing up', async () => {
+  const signUp = vi.fn(() => Promise.resolve())
+  useAuth.mockReturnValue({ signUp })
+
+  render(
+    <MemoryRouter initialEntries={[{ pathname: '/signup', state: { from: '/messages' } }]}>
+      <Routes>
+        <Route path="/signup" element={<SignupPage />} />
+        <Route path="/messages" element={<p>Messages page</p>} />
+      </Routes>
+    </MemoryRouter>
+  )
+
+  await fillForm()
+  await userEvent.click(screen.getByRole('button', { name: 'Create account' }))
+
+  expect(await screen.findByText('Messages page')).toBeInTheDocument()
 })

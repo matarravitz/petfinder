@@ -107,7 +107,7 @@ test('shows a log out control instead of log in/sign up when a user is present',
   expect(signOut).toHaveBeenCalled()
 })
 
-test('shows a Messages nav link only when logged in', () => {
+test('Messages nav link always shows, but points to login (with a redirect-back state) when logged out', () => {
   useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
   render(
     <MemoryRouter>
@@ -116,10 +116,11 @@ test('shows a Messages nav link only when logged in', () => {
       </Layout>
     </MemoryRouter>
   )
-  expect(screen.queryByRole('link', { name: 'Messages' })).not.toBeInTheDocument()
+  const messagesLink = screen.getByRole('link', { name: 'Messages' })
+  expect(messagesLink).toHaveAttribute('href', '/login')
 })
 
-test('shows a Messages nav link when logged in', () => {
+test('Messages nav link points straight to /messages when logged in', () => {
   useAuth.mockReturnValue({ user: { id: 'user-1' }, signOut: vi.fn() })
   render(
     <MemoryRouter>

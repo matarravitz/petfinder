@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from './AuthContext.jsx'
 
 export default function SignupPage() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const from = location.state?.from || '/'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -23,7 +25,7 @@ export default function SignupPage() {
     setSubmitting(true)
     try {
       await signUp(email, password, displayName)
-      navigate('/')
+      navigate(from)
     } catch (err) {
       setError(err.message)
       setSubmitting(false)
@@ -123,7 +125,7 @@ export default function SignupPage() {
           </button>
         </form>
         <p className="auth-switch">
-          Already have an account? <Link to="/login">Log in</Link>
+          Already have an account? <Link to="/login" state={location.state}>Log in</Link>
         </p>
       </div>
     </div>

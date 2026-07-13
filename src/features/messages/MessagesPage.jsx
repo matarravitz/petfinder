@@ -63,12 +63,22 @@ export default function MessagesPage() {
     setActiveId(null)
   }
 
+  function handleDelete(id) {
+    setConversations((prev) => prev.filter((c) => c.id !== id))
+    setActiveId((prev) => (prev === id ? null : prev))
+  }
+
   const activeConversation = conversations.find((c) => c.id === activeId) ?? null
 
   return (
     <div className={`messages-page${activeId ? ' has-active-thread' : ''}`}>
       <div className="messages-list-pane">
-        <ConversationList conversations={conversations} activeId={activeId} onSelect={handleSelect} />
+        <ConversationList
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={handleSelect}
+          onDelete={handleDelete}
+        />
       </div>
       <div className="messages-thread-pane">
         <ThreadPane conversation={activeConversation} onSend={handleSend} onBack={handleBack} />
