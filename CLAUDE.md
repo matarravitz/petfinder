@@ -14,7 +14,7 @@ Each feature gets its own markdown file under `docs/features/<feature-name>.md` 
 
 ## Stack
 
-React 18.3.1 + Vite, plain JavaScript (no TypeScript), React Router v6. Supabase (Postgres + Auth + Storage + Realtime) via local dev stack (Supabase CLI + Docker). Vitest + React Testing Library for tests. Hand-written CSS custom-properties design system (no Tailwind/CSS-in-JS) in `src/features/layout/theme.css`.
+React 18.3.1 + Vite, plain JavaScript (no TypeScript), React Router v6. Supabase (Postgres + Auth + Storage + Realtime) via local dev stack (Supabase CLI + Docker). Vitest + React Testing Library for tests. Hand-written CSS custom-properties design system (no Tailwind/CSS-in-JS) in `src/features/layout/theme.css`. `@tensorflow/tfjs` + `@tensorflow-models/coco-ssd` + `@tensorflow-models/mobilenet` run client-side photo analysis (species/breed detection) for the in-progress photo auto-fill feature (`src/features/posts/photoAnalysis/`).
 
 Node **must be >=22** (`.nvmrc`, `package.json engines`) — `@supabase/supabase-js` realtime needs native WebSocket support. Run `nvm use` or `nvm exec 22 <cmd>` before any `node`/`npm` command if your shell defaults to an older version.
 
@@ -116,6 +116,10 @@ Vitest + `@testing-library/react` + `@testing-library/user-event`. `vi.mock()` p
 `CreatePostForm.test.jsx` mocks `LocationPicker.jsx` with a stub button (calls `onChange` with a fixed lat/lng/text) rather than rendering the real map — keep this mock in sync if `LocationPicker`'s props ever change.
 
 `URL.createObjectURL`/`revokeObjectURL` aren't implemented in jsdom — stub via `vi.stubGlobal('URL', {...})` if a test needs photo preview URLs, and don't manually `vi.unstubAllGlobals()` before RTL's unmount cleanup runs (it'll throw when the component's cleanup calls `revokeObjectURL`).
+
+jsdom has no canvas rendering backend (no `canvas` npm package installed), so `HTMLCanvasElement#getContext('2d')` returns `null` by default — `src/setupTests.js` stubs it globally to return an object with a no-op `putImageData`. Extend that stub (don't add a per-test one) if a future test needs more canvas 2D methods (e.g. `drawImage`, `getImageData`).
+
+Modules with module-scoped memoized state (e.g. `analyzePhoto.js`'s cached TF.js model promises) leak that state across `test()` blocks within the same file — Vitest only isolates module instances per test *file*, not per test case. `analyzePhoto.test.js` resets via `vi.resetModules()` + a dynamic `await import('./analyzePhoto.js')` in `beforeEach`; reuse this pattern for any other module that memoizes at module scope.
 
 Destructive-action confirmations use the browser's native `window.confirm()` (no custom modal component exists in this app) — test with `vi.spyOn(window, 'confirm').mockReturnValue(true/false)`, and `.mockRestore()` it at the end of the test (see `ConversationRow.test.jsx`, `ConversationList.test.jsx`, `MessagesPage.test.jsx` for the pattern).
 
