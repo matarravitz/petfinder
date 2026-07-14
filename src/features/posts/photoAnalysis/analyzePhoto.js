@@ -1,5 +1,3 @@
-import * as cocoSsd from '@tensorflow-models/coco-ssd'
-import * as mobilenet from '@tensorflow-models/mobilenet'
 import { loadImageElement, cropToImageData } from './imageCanvas.js'
 import { matchSpeciesClass } from './speciesMatcher.js'
 import { matchBreedLabel } from './breedMatcher.js'
@@ -14,14 +12,14 @@ let mobilenetModelPromise = null
 
 function getCocoModel() {
   if (!cocoModelPromise) {
-    cocoModelPromise = cocoSsd.load()
+    cocoModelPromise = import('@tensorflow-models/coco-ssd').then((module) => module.load())
   }
   return cocoModelPromise
 }
 
 function getMobilenetModel() {
   if (!mobilenetModelPromise) {
-    mobilenetModelPromise = mobilenet.load()
+    mobilenetModelPromise = import('@tensorflow-models/mobilenet').then((module) => module.load())
   }
   return mobilenetModelPromise
 }

@@ -305,6 +305,49 @@ test('editing an auto-filled field clears its auto-filled marker', async () => {
   expect(screen.getAllByText('✨ auto-filled')).toHaveLength(2)
 })
 
+test('re-analyzing with the same species but a low-confidence breed/color does not wipe the previously auto-filled breed/color', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  analyzePhoto.mockResolvedValueOnce({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: 'Golden',
+    undetected: [],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() => expect(screen.getByLabelText('Species')).toHaveValue('dog'))
+  expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever')
+  expect(screen.getByLabelText('Color')).toHaveValue('Golden')
+
+  analyzePhoto.mockResolvedValueOnce({
+    species: 'dog',
+    breed: null,
+    breedOther: null,
+    color: null,
+    undetected: ['breed', 'color'],
+  })
+
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() =>
+    expect(
+      screen.getByText("Couldn't confidently detect breed, color — please fill them in manually.")
+    ).toBeInTheDocument()
+  )
+  expect(screen.getByLabelText('Species')).toHaveValue('dog')
+  expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever')
+  expect(screen.getByLabelText('Color')).toHaveValue('Golden')
+})
+
 test('shows a retryable inline error when analysis fails', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
   analyzePhoto.mockRejectedValue(new Error('model load failed'))

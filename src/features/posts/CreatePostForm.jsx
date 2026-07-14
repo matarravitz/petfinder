@@ -143,17 +143,32 @@ export default function CreatePostForm() {
       const result = await analyzePhoto(files[0], BREEDS_BY_SPECIES)
       const filled = new Set()
       if (result.species) {
-        updateSpecies(result.species)
         filled.add('species')
       }
       if (result.breed) {
-        setForm((prev) => ({ ...prev, breed: result.breed, breedOther: result.breedOther || '' }))
         filled.add('breed')
       }
       if (result.color) {
-        update('color', result.color)
         filled.add('color')
       }
+      // Only clear breed/breedOther/size when species is actually changing from
+      // its current value — otherwise a low-confidence breed/color this run would
+      // wipe a value that was confidently filled (and kept) on a previous run.
+      setForm((prev) => {
+        let next = prev
+        if (result.species && result.species !== prev.species) {
+          next = { ...next, species: result.species, breed: '', breedOther: '', size: '' }
+        } else if (result.species) {
+          next = { ...next, species: result.species }
+        }
+        if (result.breed) {
+          next = { ...next, breed: result.breed, breedOther: result.breedOther || '' }
+        }
+        if (result.color) {
+          next = { ...next, color: result.color }
+        }
+        return next
+      })
       // Merge, don't replace: a field that came back low-confidence this run
       // keeps whatever value (and auto-filled badge) it already had, per spec.
       setAutoFilledFields((prev) => new Set([...prev, ...filled]))
