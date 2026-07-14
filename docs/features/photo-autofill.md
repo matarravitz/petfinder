@@ -39,6 +39,8 @@ Runs only when species resolved to `cat` or `dog` — MobileNet's ImageNet class
 
 MobileNet's raw label (e.g. `"golden retriever"`) is matched against `BREEDS_BY_SPECIES[species]` (`src/features/posts/CreatePostForm.jsx`) by a plain keyword match — not another model call. On a confident match, set `breed` to the matched option. On no match, set `breed: "other"` and `breedOther` to the raw label (capitalized), so nothing is silently dropped. This mapping logic lives in its own pure, unit-testable module (see Testing).
 
+**Known limitation:** ImageNet's ~1000 classes don't cover every real breed (e.g. no "Scottish Fold" class at all). On an unrecognized breed, MobileNet doesn't say "unsure" — it returns whichever known class looks closest, sometimes with real confidence (observed: a Scottish Fold photo classified as "Persian"). The breed threshold was raised from 0.4 to 0.6 (matching species) specifically to cut down on these plausible-but-wrong guesses, trading away some correct guesses — mainly dogs, where MobileNet's coverage is better — for fewer confidently-wrong ones. `BREEDS_BY_SPECIES.cat` was also expanded (Scottish Fold, Abyssinian, Russian Blue, American Shorthair, Norwegian Forest Cat) so at least manual selection covers more real breeds, even though auto-detection still can't produce them.
+
 ## Color detection
 
 Each `COLOR_OPTIONS` entry (`Black`, `White`, `Brown`, `Gray`, `Orange/Ginger`, `Cream`, `Golden`, `Black and white`, `Multi-color`) gets a representative RGB value. The dominant color of the cropped `ImageData` is computed and matched to the nearest option by RGB distance. If the crop's pixels are highly varied — no single color dominates — it maps to `Multi-color` rather than forcing a bad single-color guess. This mapping logic is also a pure, unit-testable function alongside the breed matcher.
@@ -50,7 +52,7 @@ Applies independently per field (species, breed, color): below the confidence th
 Default thresholds (tunable during implementation, not exposed to the user):
 
 - **Species** (COCO-SSD `cat`/`dog`/`bird` score): **0.6**
-- **Breed** (MobileNet top-1 class probability): **0.4** — lower than species because fine-grained breed classification is inherently harder than coarse species detection
+- **Breed** (MobileNet top-1 class probability): **0.6**, same as species (raised from an original 0.4 — see Breed detection below for why)
 - **Color "highly varied"** (no single dominant color): the crop's dominant color bucket accounts for less than **40%** of sampled pixels → maps to `Multi-color` instead of the nearest single-color option
 
 ## UX & component changes

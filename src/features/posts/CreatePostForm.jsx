@@ -26,6 +26,11 @@ const BREEDS_BY_SPECIES = {
     'Ragdoll',
     'Bengal',
     'Sphynx',
+    'Scottish Fold',
+    'Abyssinian',
+    'Russian Blue',
+    'American Shorthair',
+    'Norwegian Forest Cat',
   ],
   dog: [
     'Labrador Retriever',

@@ -4,7 +4,13 @@ import { matchBreedLabel } from './breedMatcher.js'
 import { computeDominantColorBucket, matchColorToOption } from './colorMatcher.js'
 
 const SPECIES_CONFIDENCE_THRESHOLD = 0.6
-const BREED_CONFIDENCE_THRESHOLD = 0.4
+// Raised from 0.4: ImageNet's fixed class list is missing many real breeds
+// (e.g. Scottish Fold), so on an unrecognized breed the model still returns
+// its closest known class with moderate confidence instead of "unsure" —
+// producing plausible-looking wrong guesses that a low bar let through.
+// Trades some correct guesses (mainly dogs, where the model does better)
+// for fewer confidently-wrong ones.
+const BREED_CONFIDENCE_THRESHOLD = 0.6
 const SPECIES_WITH_BREED_SUPPORT = new Set(['cat', 'dog'])
 
 let tfjsBackendPromise = null
