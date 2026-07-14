@@ -24,6 +24,13 @@ describe('computeDominantColorBucket', () => {
     const result = computeDominantColorBucket(pixelData)
     expect(result.ratio).toBe(0.8)
   })
+
+  test('clamps bucketed value to 255 for pure white', () => {
+    const pixelData = buildSolidColorPixelData(255, 255, 255, 10)
+    const result = computeDominantColorBucket(pixelData)
+    expect(result.rgb).toEqual([255, 255, 255])
+    expect(result.ratio).toBe(1)
+  })
 })
 
 describe('matchColorToOption', () => {

@@ -18,9 +18,9 @@ export function computeDominantColorBucket(pixelData) {
   let totalPixels = 0
 
   for (let i = 0; i < pixelData.length; i += 4) {
-    const r = Math.round(pixelData[i] / BUCKET_SIZE) * BUCKET_SIZE
-    const g = Math.round(pixelData[i + 1] / BUCKET_SIZE) * BUCKET_SIZE
-    const b = Math.round(pixelData[i + 2] / BUCKET_SIZE) * BUCKET_SIZE
+    const r = Math.min(255, Math.round(pixelData[i] / BUCKET_SIZE) * BUCKET_SIZE)
+    const g = Math.min(255, Math.round(pixelData[i + 1] / BUCKET_SIZE) * BUCKET_SIZE)
+    const b = Math.min(255, Math.round(pixelData[i + 2] / BUCKET_SIZE) * BUCKET_SIZE)
     const key = `${r},${g},${b}`
     bucketCounts.set(key, (bucketCounts.get(key) || 0) + 1)
     totalPixels += 1
