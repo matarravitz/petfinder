@@ -693,6 +693,11 @@ body {
   color: var(--color-muted);
 }
 
+.field-label-row {
+  display: flex;
+  align-items: center;
+}
+
 .field-input,
 .field-select {
   font-family: var(--font-family-body);
@@ -787,6 +792,44 @@ body {
   border-radius: calc(var(--radius-button) / 1.6);
   object-fit: cover;
   border: 1px solid var(--color-border);
+}
+
+.photo-analyze {
+  margin-top: var(--space-sm);
+}
+
+.photo-analyze-button {
+  font-family: var(--font-family-body);
+  font-weight: 700;
+  color: var(--color-accent);
+  background: var(--color-accent-tint);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-button);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+}
+
+.photo-analyze-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.photo-analyze-error {
+  color: #b91c1c;
+  font-weight: 600;
+  margin-top: var(--space-xs);
+}
+
+.photo-analyze-note {
+  color: var(--color-muted);
+  margin-top: var(--space-xs);
+}
+
+.auto-filled-badge {
+  margin-left: var(--space-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-accent);
 }
 
 .form-submit {

@@ -5,9 +5,11 @@ import { MemoryRouter } from 'react-router-dom'
 import CreatePostForm from './CreatePostForm.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 import * as postsApi from './postsApi.js'
+import { analyzePhoto } from './photoAnalysis/analyzePhoto.js'
 
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
 vi.mock('./postsApi.js', () => ({ createPost: vi.fn(() => Promise.resolve({ id: 'p1' })) }))
+vi.mock('./photoAnalysis/analyzePhoto.js', () => ({ analyzePhoto: vi.fn() }))
 vi.mock('./LocationPicker.jsx', () => ({
   default: ({ value, onChange }) => (
     <button
@@ -203,4 +205,121 @@ test('phone number is optional and gets submitted when filled in', async () => {
     expect.objectContaining({ phone_number: '050-1234567' }),
     []
   )
+})
+
+async function uploadOnePhoto() {
+  const createObjectURL = vi.fn(() => 'blob:preview-url')
+  vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() })
+  const file = new File(['fake-image-content'], 'dog.jpg', { type: 'image/jpeg' })
+  await userEvent.upload(screen.getByLabelText(/choose photos/i), file)
+}
+
+test('Analyze Photo button only appears once a photo is selected', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  expect(screen.queryByRole('button', { name: 'Analyze Photo' })).not.toBeInTheDocument()
+
+  await uploadOnePhoto()
+
+  expect(screen.getByRole('button', { name: 'Analyze Photo' })).toBeInTheDocument()
+})
+
+test('analyzing a photo fills species, breed, and color and marks them as auto-filled', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  analyzePhoto.mockResolvedValue({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: 'Golden',
+    undetected: [],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() => expect(screen.getByLabelText('Species')).toHaveValue('dog'))
+  expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever')
+  expect(screen.getByLabelText('Color')).toHaveValue('Golden')
+  expect(screen.getAllByText('✨ auto-filled')).toHaveLength(3)
+})
+
+test('shows a note and leaves fields blank for anything the model could not confidently detect', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  analyzePhoto.mockResolvedValue({
+    species: null,
+    breed: null,
+    breedOther: null,
+    color: null,
+    undetected: ['species', 'breed', 'color'],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  expect(
+    await screen.findByText("Couldn't confidently detect species, breed, color — please fill them in manually.")
+  ).toBeInTheDocument()
+  expect(screen.getByLabelText('Species')).toHaveValue('')
+})
+
+test('editing an auto-filled field clears its auto-filled marker', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  analyzePhoto.mockResolvedValue({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: 'Golden',
+    undetected: [],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+  await waitFor(() => expect(screen.getAllByText('✨ auto-filled')).toHaveLength(3))
+
+  await userEvent.selectOptions(screen.getByLabelText('Color'), 'Black')
+
+  expect(screen.getAllByText('✨ auto-filled')).toHaveLength(2)
+})
+
+test('shows a retryable inline error when analysis fails', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  analyzePhoto.mockRejectedValue(new Error('model load failed'))
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  expect(
+    await screen.findByText('Photo analysis failed. You can still fill in the fields manually.')
+  ).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Analyze Photo' })).toBeEnabled()
 })

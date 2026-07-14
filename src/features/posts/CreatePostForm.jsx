@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient.js'
 import { buildPostPayload } from './buildPostPayload.js'
 import { createPost } from './postsApi.js'
 import LocationPicker from './LocationPicker.jsx'
+import { analyzePhoto } from './photoAnalysis/analyzePhoto.js'
 
 const SPECIES_OPTIONS = [
   { value: 'cat', label: 'Cat' },
@@ -107,6 +108,10 @@ export default function CreatePostForm() {
   const [files, setFiles] = useState([])
   const [previewUrls, setPreviewUrls] = useState([])
   const [error, setError] = useState(null)
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysisError, setAnalysisError] = useState(null)
+  const [undetectedFields, setUndetectedFields] = useState([])
+  const [autoFilledFields, setAutoFilledFields] = useState(new Set())
 
   useEffect(() => {
     const urls = files.map((file) => URL.createObjectURL(file))
@@ -120,6 +125,50 @@ export default function CreatePostForm() {
 
   function updateSpecies(value) {
     setForm((prev) => ({ ...prev, species: value, breed: '', breedOther: '', size: '' }))
+  }
+
+  function clearAutoFilled(fields) {
+    setAutoFilledFields((prev) => {
+      const next = new Set(prev)
+      fields.forEach((field) => next.delete(field))
+      return next
+    })
+  }
+
+  async function handleAnalyzePhoto() {
+    setAnalyzing(true)
+    setAnalysisError(null)
+    setUndetectedFields([])
+    try {
+      const result = await analyzePhoto(files[0], BREEDS_BY_SPECIES)
+      const filled = new Set()
+      if (result.species) {
+        updateSpecies(result.species)
+        filled.add('species')
+      }
+      if (result.breed) {
+        setForm((prev) => ({ ...prev, breed: result.breed, breedOther: result.breedOther || '' }))
+        filled.add('breed')
+      }
+      if (result.color) {
+        update('color', result.color)
+        filled.add('color')
+      }
+      // Merge, don't replace: a field that came back low-confidence this run
+      // keeps whatever value (and auto-filled badge) it already had, per spec.
+      setAutoFilledFields((prev) => new Set([...prev, ...filled]))
+      setUndetectedFields(result.undetected)
+    } catch {
+      setAnalysisError('Photo analysis failed. You can still fill in the fields manually.')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  const FIELD_LABELS = { species: 'species', breed: 'breed', color: 'color' }
+
+  function formatUndetectedFields(fields) {
+    return fields.map((field) => FIELD_LABELS[field]).join(', ')
   }
 
   const breedOptions = BREEDS_BY_SPECIES[form.species]
@@ -189,14 +238,22 @@ export default function CreatePostForm() {
         <h3 className="form-section-title">About the pet</h3>
         <div className="field-grid">
           <div className="field">
-            <label className="field-label" htmlFor="species">
-              Species
-            </label>
+            <div className="field-label-row">
+              <label className="field-label" htmlFor="species">
+                Species
+              </label>
+              {autoFilledFields.has('species') && (
+                <span className="auto-filled-badge">✨ auto-filled</span>
+              )}
+            </div>
             <select
               id="species"
               className="field-select"
               value={form.species}
-              onChange={(e) => updateSpecies(e.target.value)}
+              onChange={(e) => {
+                updateSpecies(e.target.value)
+                clearAutoFilled(['species', 'breed'])
+              }}
               required
             >
               <option value="" disabled>
@@ -211,15 +268,23 @@ export default function CreatePostForm() {
           </div>
 
           <div className="field">
-            <label className="field-label" htmlFor="breed">
-              Breed
-            </label>
+            <div className="field-label-row">
+              <label className="field-label" htmlFor="breed">
+                Breed
+              </label>
+              {autoFilledFields.has('breed') && (
+                <span className="auto-filled-badge">✨ auto-filled</span>
+              )}
+            </div>
             {breedOptions ? (
               <select
                 id="breed"
                 className="field-select"
                 value={form.breed}
-                onChange={(e) => update('breed', e.target.value)}
+                onChange={(e) => {
+                  update('breed', e.target.value)
+                  clearAutoFilled(['breed'])
+                }}
               >
                 <option value="">Select breed</option>
                 {breedOptions.map((breed) => (
@@ -234,7 +299,10 @@ export default function CreatePostForm() {
                 id="breed"
                 className="field-input"
                 value={form.breed}
-                onChange={(e) => update('breed', e.target.value)}
+                onChange={(e) => {
+                  update('breed', e.target.value)
+                  clearAutoFilled(['breed'])
+                }}
               />
             )}
           </div>
@@ -248,20 +316,31 @@ export default function CreatePostForm() {
                 id="breedOther"
                 className="field-input"
                 value={form.breedOther}
-                onChange={(e) => update('breedOther', e.target.value)}
+                onChange={(e) => {
+                  update('breedOther', e.target.value)
+                  clearAutoFilled(['breed'])
+                }}
               />
             </div>
           )}
 
           <div className="field">
-            <label className="field-label" htmlFor="color">
-              Color
-            </label>
+            <div className="field-label-row">
+              <label className="field-label" htmlFor="color">
+                Color
+              </label>
+              {autoFilledFields.has('color') && (
+                <span className="auto-filled-badge">✨ auto-filled</span>
+              )}
+            </div>
             <select
               id="color"
               className="field-select"
               value={form.color}
-              onChange={(e) => update('color', e.target.value)}
+              onChange={(e) => {
+                update('color', e.target.value)
+                clearAutoFilled(['color'])
+              }}
             >
               <option value="">Select color</option>
               {COLOR_OPTIONS.map((color) => (
@@ -282,7 +361,10 @@ export default function CreatePostForm() {
                 id="colorOther"
                 className="field-input"
                 value={form.colorOther}
-                onChange={(e) => update('colorOther', e.target.value)}
+                onChange={(e) => {
+                  update('colorOther', e.target.value)
+                  clearAutoFilled(['color'])
+                }}
               />
             </div>
           )}
@@ -431,6 +513,29 @@ export default function CreatePostForm() {
             {previewUrls.map((url, index) => (
               <img key={url} className="photo-preview-thumb" src={url} alt={`Selected photo ${index + 1}`} />
             ))}
+          </div>
+        )}
+        {files.length > 0 && (
+          <div className="photo-analyze">
+            <button
+              type="button"
+              className="photo-analyze-button"
+              onClick={handleAnalyzePhoto}
+              disabled={analyzing}
+            >
+              {analyzing ? 'Analyzing photo…' : 'Analyze Photo'}
+            </button>
+            {analysisError && (
+              <p className="photo-analyze-error" role="alert">
+                {analysisError}
+              </p>
+            )}
+            {undetectedFields.length > 0 && (
+              <p className="photo-analyze-note">
+                Couldn&apos;t confidently detect {formatUndetectedFields(undetectedFields)} — please fill{' '}
+                {undetectedFields.length > 1 ? 'them' : 'it'} in manually.
+              </p>
+            )}
           </div>
         )}
       </div>
