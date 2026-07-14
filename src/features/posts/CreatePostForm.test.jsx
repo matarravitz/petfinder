@@ -214,6 +214,26 @@ async function uploadOnePhoto() {
   await userEvent.upload(screen.getByLabelText(/choose photos/i), file)
 }
 
+test('shows a hint about photo auto-fill before a photo is uploaded, and hides it after', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  expect(
+    screen.getByText('Add a photo first — we can suggest species, breed, and color for you to review below.')
+  ).toBeInTheDocument()
+
+  await uploadOnePhoto()
+
+  expect(
+    screen.queryByText('Add a photo first — we can suggest species, breed, and color for you to review below.')
+  ).not.toBeInTheDocument()
+})
+
 test('Analyze Photo button only appears once a photo is selected', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
 
@@ -346,6 +366,86 @@ test('re-analyzing with the same species but a low-confidence breed/color does n
   expect(screen.getByLabelText('Species')).toHaveValue('dog')
   expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever')
   expect(screen.getByLabelText('Color')).toHaveValue('Golden')
+})
+
+test('asks for confirmation before overwriting a manually-entered breed, and leaves it untouched if declined', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  analyzePhoto.mockResolvedValue({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: null,
+    undetected: ['color'],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'dog')
+  await userEvent.selectOptions(screen.getByLabelText('Breed'), 'Labrador Retriever')
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() => expect(window.confirm).toHaveBeenCalled())
+  expect(window.confirm.mock.calls[0][0]).toContain('breed')
+  expect(screen.getByLabelText('Breed')).toHaveValue('Labrador Retriever')
+  expect(screen.queryByText('✨ auto-filled')).not.toBeInTheDocument()
+  window.confirm.mockRestore()
+})
+
+test('applies the auto-fill result once the user confirms overwriting a manually-entered breed', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  analyzePhoto.mockResolvedValue({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: null,
+    undetected: ['color'],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'dog')
+  await userEvent.selectOptions(screen.getByLabelText('Breed'), 'Labrador Retriever')
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() => expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever'))
+  window.confirm.mockRestore()
+})
+
+test('does not ask for confirmation when the analyzed fields were already blank', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  vi.spyOn(window, 'confirm')
+  analyzePhoto.mockResolvedValue({
+    species: 'dog',
+    breed: 'Golden Retriever',
+    breedOther: '',
+    color: 'Golden',
+    undetected: [],
+  })
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.click(screen.getByRole('button', { name: 'Analyze Photo' }))
+
+  await waitFor(() => expect(screen.getByLabelText('Breed')).toHaveValue('Golden Retriever'))
+  expect(window.confirm).not.toHaveBeenCalled()
+  window.confirm.mockRestore()
 })
 
 test('shows a retryable inline error when analysis fails', async () => {

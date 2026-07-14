@@ -758,6 +758,12 @@ body {
   cursor: pointer;
 }
 
+.photo-upload-hint {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  margin: 0 0 var(--space-sm);
+}
+
 .photo-dropzone {
   display: block;
   border: 2px dashed var(--color-border);

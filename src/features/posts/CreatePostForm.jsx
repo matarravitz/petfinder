@@ -135,22 +135,38 @@ export default function CreatePostForm() {
     })
   }
 
+  // A field counts as "manually entered" if it already has a value the user
+  // typed themselves — i.e. non-empty and not something a prior analyze already
+  // auto-filled. Used to ask before an auto-fill result would overwrite it.
+  function hasManualValue(field) {
+    if (field === 'species') return form.species !== '' && !autoFilledFields.has('species')
+    if (field === 'breed') return (form.breed !== '' || form.breedOther !== '') && !autoFilledFields.has('breed')
+    if (field === 'color') return (form.color !== '' || form.colorOther !== '') && !autoFilledFields.has('color')
+    return false
+  }
+
   async function handleAnalyzePhoto() {
     setAnalyzing(true)
     setAnalysisError(null)
     setUndetectedFields([])
     try {
       const result = await analyzePhoto(files[0], BREEDS_BY_SPECIES)
-      const filled = new Set()
-      if (result.species) {
-        filled.add('species')
+
+      const confidentFields = []
+      if (result.species) confidentFields.push('species')
+      if (result.breed) confidentFields.push('breed')
+      if (result.color) confidentFields.push('color')
+
+      const manualConflicts = confidentFields.filter(hasManualValue)
+      if (manualConflicts.length > 0) {
+        const confirmed = window.confirm(
+          `This will replace the ${formatFieldList(manualConflicts)} you already entered. Continue?`
+        )
+        if (!confirmed) {
+          return
+        }
       }
-      if (result.breed) {
-        filled.add('breed')
-      }
-      if (result.color) {
-        filled.add('color')
-      }
+
       // Only clear breed/breedOther/size when species is actually changing from
       // its current value — otherwise a low-confidence breed/color this run would
       // wipe a value that was confidently filled (and kept) on a previous run.
@@ -171,7 +187,7 @@ export default function CreatePostForm() {
       })
       // Merge, don't replace: a field that came back low-confidence this run
       // keeps whatever value (and auto-filled badge) it already had, per spec.
-      setAutoFilledFields((prev) => new Set([...prev, ...filled]))
+      setAutoFilledFields((prev) => new Set([...prev, ...confidentFields]))
       setUndetectedFields(result.undetected)
     } catch {
       setAnalysisError('Photo analysis failed. You can still fill in the fields manually.')
@@ -182,7 +198,7 @@ export default function CreatePostForm() {
 
   const FIELD_LABELS = { species: 'species', breed: 'breed', color: 'color' }
 
-  function formatUndetectedFields(fields) {
+  function formatFieldList(fields) {
     return fields.map((field) => FIELD_LABELS[field]).join(', ')
   }
 
@@ -247,6 +263,57 @@ export default function CreatePostForm() {
             Found pet
           </button>
         </div>
+      </div>
+
+      <div className="form-section">
+        <h3 className="form-section-title">Photos</h3>
+        {files.length === 0 && (
+          <p className="photo-upload-hint">
+            Add a photo first — we can suggest species, breed, and color for you to review below.
+          </p>
+        )}
+        <label className="photo-dropzone" htmlFor="photos">
+          {files.length > 0
+            ? `${files.length} photo${files.length > 1 ? 's' : ''} selected — click to change`
+            : 'Click to choose photos'}
+          <input
+            id="photos"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => setFiles(Array.from(e.target.files))}
+          />
+        </label>
+        {previewUrls.length > 0 && (
+          <div className="photo-preview-grid">
+            {previewUrls.map((url, index) => (
+              <img key={url} className="photo-preview-thumb" src={url} alt={`Selected photo ${index + 1}`} />
+            ))}
+          </div>
+        )}
+        {files.length > 0 && (
+          <div className="photo-analyze">
+            <button
+              type="button"
+              className="photo-analyze-button"
+              onClick={handleAnalyzePhoto}
+              disabled={analyzing}
+            >
+              {analyzing ? 'Analyzing photo…' : 'Analyze Photo'}
+            </button>
+            {analysisError && (
+              <p className="photo-analyze-error" role="alert">
+                {analysisError}
+              </p>
+            )}
+            {undetectedFields.length > 0 && (
+              <p className="photo-analyze-note">
+                Couldn&apos;t confidently detect {formatFieldList(undetectedFields)} — please fill{' '}
+                {undetectedFields.length > 1 ? 'them' : 'it'} in manually.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="form-section">
@@ -507,52 +574,6 @@ export default function CreatePostForm() {
             </>
           )}
         </div>
-      </div>
-
-      <div className="form-section">
-        <h3 className="form-section-title">Photos</h3>
-        <label className="photo-dropzone" htmlFor="photos">
-          {files.length > 0
-            ? `${files.length} photo${files.length > 1 ? 's' : ''} selected — click to change`
-            : 'Click to choose photos'}
-          <input
-            id="photos"
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(e) => setFiles(Array.from(e.target.files))}
-          />
-        </label>
-        {previewUrls.length > 0 && (
-          <div className="photo-preview-grid">
-            {previewUrls.map((url, index) => (
-              <img key={url} className="photo-preview-thumb" src={url} alt={`Selected photo ${index + 1}`} />
-            ))}
-          </div>
-        )}
-        {files.length > 0 && (
-          <div className="photo-analyze">
-            <button
-              type="button"
-              className="photo-analyze-button"
-              onClick={handleAnalyzePhoto}
-              disabled={analyzing}
-            >
-              {analyzing ? 'Analyzing photo…' : 'Analyze Photo'}
-            </button>
-            {analysisError && (
-              <p className="photo-analyze-error" role="alert">
-                {analysisError}
-              </p>
-            )}
-            {undetectedFields.length > 0 && (
-              <p className="photo-analyze-note">
-                Couldn&apos;t confidently detect {formatUndetectedFields(undetectedFields)} — please fill{' '}
-                {undetectedFields.length > 1 ? 'them' : 'it'} in manually.
-              </p>
-            )}
-          </div>
-        )}
       </div>
 
       <div className="form-section">

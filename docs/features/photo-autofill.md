@@ -1,7 +1,7 @@
 # Feature: Photo auto-fill on post creation
 
 **Status:** implemented.
-**Last updated:** 2026-07-13
+**Last updated:** 2026-07-14
 
 ## Goal
 
@@ -55,11 +55,14 @@ Default thresholds (tunable during implementation, not exposed to the user):
 
 ## UX & component changes
 
-- **Trigger:** an "Analyze Photo" button appears in the Photos section of `CreatePostForm.jsx` once at least one photo is selected — not automatic on file select.
+- **Photos section comes first:** `CreatePostForm.jsx` renders "Photos" before "About the pet" (not after) — so a user reading top-to-bottom uploads a photo before manually typing species/breed/color, instead of doing that work and then finding the auto-fill option below it. (Originally shipped with Photos last; reordered after user feedback that this created a natural "fill it in, then find out you didn't have to" trap.)
+- **Pre-upload hint:** before any photo is selected, the Photos section shows a one-line hint — "Add a photo first — we can suggest species, breed, and color for you to review below." — so the feature is discoverable before the user starts typing, not just via a button they might not notice once fields are already open below.
+- **Trigger:** an "Analyze Photo" button appears once at least one photo is selected — not automatic on file select. The hint disappears once a photo is chosen.
 - **Which photo:** always the first photo in the `files` array (the cover photo).
 - **Loading state:** button shows "Analyzing photo…" while models load (first click only) and while inference runs.
+- **Confirm before overwriting manual entries:** if the user already typed a value into species, breed, or color themselves (not a value left over from a prior auto-fill) and this analysis run would confidently overwrite it, a native `window.confirm()` asks first — e.g. "This will replace the breed you already entered. Continue?" (matches this app's existing native-confirm pattern for other overwrite/destructive actions, e.g. `ConversationRow`'s delete). Declining leaves that run's result entirely un-applied; nothing is partially applied. A field's value only counts as "already entered" if it's non-empty and **not** currently marked auto-filled — so normal re-analyze runs (where the existing value came from a prior auto-fill) never trigger this prompt.
 - **Auto-filled indicator:** fields that got a value from analysis show a small visual marker (e.g. a subtle "✨ auto-filled" tag) next to the label, distinguishing them from manually-typed values. The marker disappears the moment the user edits that field — it's now a manual value.
-- **Re-running:** clicking "Analyze Photo" again (e.g. after changing the photo) re-runs the whole pipeline and overwrites any field that gets a confident result this time. Fields that come back low-confidence this run are left as-is (not wiped) — so a second run never blanks something already filled in.
+- **Re-running:** clicking "Analyze Photo" again (e.g. after changing the photo) re-runs the whole pipeline and overwrites any field that gets a confident result this time (subject to the confirm step above if that field was manually edited since the last auto-fill). Fields that come back low-confidence this run are left as-is (not wiped) — so a second run never blanks something already filled in.
 - Selecting species via `updateSpecies()` already clears `breed`/`breedOther`/`size` (existing behavior in `CreatePostForm.jsx`) — the auto-fill flow reuses that same update path (set species first, then breed) rather than writing directly to form state, so this existing invariant isn't bypassed.
 
 ## Error handling
