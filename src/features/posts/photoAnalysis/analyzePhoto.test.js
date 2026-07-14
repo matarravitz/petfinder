@@ -3,6 +3,7 @@ import * as cocoSsd from '@tensorflow-models/coco-ssd'
 import * as mobilenet from '@tensorflow-models/mobilenet'
 import { cropToImageData, loadImageElement } from './imageCanvas.js'
 
+vi.mock('@tensorflow/tfjs', () => ({}))
 vi.mock('@tensorflow-models/coco-ssd', () => ({ load: vi.fn() }))
 vi.mock('@tensorflow-models/mobilenet', () => ({ load: vi.fn() }))
 vi.mock('./imageCanvas.js', () => ({

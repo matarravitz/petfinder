@@ -7,19 +7,37 @@ const SPECIES_CONFIDENCE_THRESHOLD = 0.6
 const BREED_CONFIDENCE_THRESHOLD = 0.4
 const SPECIES_WITH_BREED_SUPPORT = new Set(['cat', 'dog'])
 
+let tfjsBackendPromise = null
 let cocoModelPromise = null
 let mobilenetModelPromise = null
 
+// @tensorflow-models/coco-ssd and @tensorflow-models/mobilenet only depend on
+// @tensorflow/tfjs-core (tensor APIs), not a backend implementation. Without
+// importing the @tensorflow/tfjs umbrella package first (which registers the
+// CPU/WebGL backends as a side effect), model.load() throws "No backend found
+// in registry." Dynamic-imported here (not at module top) so it code-splits
+// alongside coco-ssd/mobilenet instead of loading on every page.
+function ensureTfjsBackend() {
+  if (!tfjsBackendPromise) {
+    tfjsBackendPromise = import('@tensorflow/tfjs')
+  }
+  return tfjsBackendPromise
+}
+
 function getCocoModel() {
   if (!cocoModelPromise) {
-    cocoModelPromise = import('@tensorflow-models/coco-ssd').then((module) => module.load())
+    cocoModelPromise = ensureTfjsBackend()
+      .then(() => import('@tensorflow-models/coco-ssd'))
+      .then((module) => module.load())
   }
   return cocoModelPromise
 }
 
 function getMobilenetModel() {
   if (!mobilenetModelPromise) {
-    mobilenetModelPromise = import('@tensorflow-models/mobilenet').then((module) => module.load())
+    mobilenetModelPromise = ensureTfjsBackend()
+      .then(() => import('@tensorflow-models/mobilenet'))
+      .then((module) => module.load())
   }
   return mobilenetModelPromise
 }
