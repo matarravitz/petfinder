@@ -1,4 +1,5 @@
 import { formatPostReference } from './mockConversations.js'
+import TrashIcon from './TrashIcon.jsx'
 
 export default function ConversationRow({ conversation, active, onClick, onDelete }) {
   const lastMessage = conversation.messages[conversation.messages.length - 1]
@@ -48,7 +49,7 @@ export default function ConversationRow({ conversation, active, onClick, onDelet
         onClick={handleDeleteClick}
         aria-label={`Delete conversation with ${conversation.otherUser.displayName}`}
       >
-        Delete
+        <TrashIcon />
       </button>
     </div>
   )
