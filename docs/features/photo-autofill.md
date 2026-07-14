@@ -1,6 +1,6 @@
 # Feature: Photo auto-fill on post creation
 
-**Status:** planned (not yet implemented).
+**Status:** implemented.
 **Last updated:** 2026-07-13
 
 ## Goal
