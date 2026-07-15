@@ -29,6 +29,8 @@ Models are loaded lazily — only on the first "Analyze Photo" click, not on pag
 
 New dependencies: `@tensorflow/tfjs`, `@tensorflow-models/coco-ssd`, `@tensorflow-models/mobilenet`.
 
+Model loading (`ensureTfjsBackend`/`getCocoModel`/`getMobilenetModel`) lives in its own shared module, `photoAnalysis/models.js`, extracted so `post-matching.md`'s embedding computation (`getPhotoEmbedding.js`) can reuse the same memoized MobileNet model instance instead of loading it a second time. `analyzePhoto.js` imports from there rather than defining these itself.
+
 ## Species detection
 
 COCO-SSD's relevant classes are `cat`, `dog`, `bird` — those are the only species this feature can auto-fill; `rabbit` and `other` have no matching class and always stay manual (same "low confidence" UX as any other undetected field, see below).

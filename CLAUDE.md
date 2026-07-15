@@ -78,7 +78,13 @@ src/
       LocationPicker.jsx     # Leaflet map + live geocoding search (see Gotchas)
       PostDetailPage.jsx     # fixed-grid detail fields, resolve action, Contact publisher button
                               # (navigates to /messages with location.state — see Gotchas)
-      postsApi.js            # listPosts/getPost/createPost/resolvePost (supabase queries)
+      photoAnalysis/          # client-side species/breed/color detection (TF.js), see Gotchas
+        models.js              # shared memoized TF.js model loaders (coco-ssd, mobilenet) — analyzePhoto.js
+                                # and getPhotoEmbedding.js both import from here, not their own copies
+        getPhotoEmbedding.js    # MobileNet embedding vector for cross-post match suggestions
+        cosineSimilarity.js     # pure vector-similarity helper used by matchPosts.js
+      postsApi.js            # listPosts/getPost/createPost/resolvePost/listCandidatePostsForMatching
+      matchPosts.js           # pure hybrid scoring (visual + location + date) for match suggestions
       buildPostPayload.js    # pure function: form state -> DB insert payload
       filterPosts.js         # pure function: filterAndSortPosts(posts, filters)
   lib/
@@ -88,14 +94,14 @@ src/
     distance.js              # haversine distance helper
   testUtils/fakeSupabase.js  # chainable/thenable fake supabase client for tests
 supabase/migrations/         # 0001_init (schema+RLS), 0002_storage, 0003_grants (see Gotchas),
-                              # 0004_posts_phone_number
+                              # 0004_posts_phone_number, 0005_photo_embedding
 scripts/seed-test-posts.mjs  # seeds demo posts with real fetched photos
 scripts/verify-schema.mjs    # schema/RLS sanity check (see Commands)
 ```
 
 ## Database schema (posts table, see `supabase/migrations/0001_init.sql`)
 
-`type` (enum: missing/found) · `species` · `breed` · `color` · `size` · `collar` (bool) + `collar_description` · `microchipped` (enum: yes/no/unknown) · `distinctive_markings` · `pet_name` · `reward_amount` (numeric, missing-only) · `phone_number` (nullable text, optional) · `location_lat`/`location_lng`/`location_text` · `date_lost_or_found` · `status` (enum: active/resolved) · `owner_id` → `profiles`. RLS: everyone can read; only owners can insert/update/delete their own posts.
+`type` (enum: missing/found) · `species` · `breed` · `color` · `size` · `collar` (bool) + `collar_description` · `microchipped` (enum: yes/no/unknown) · `distinctive_markings` · `pet_name` · `reward_amount` (numeric, missing-only) · `phone_number` (nullable text, optional) · `photo_embedding` (nullable `jsonb`, ~1024-number MobileNet feature vector, computed client-side at post-creation time — see `docs/features/post-matching.md`) · `location_lat`/`location_lng`/`location_text` · `date_lost_or_found` · `status` (enum: active/resolved) · `owner_id` → `profiles`. RLS: everyone can read; only owners can insert/update/delete their own posts.
 
 There is **no `messages`/`conversations` table** — the in-site chat feature is mock-data-only (see Architecture above and `docs/features/messaging.md`). Don't assume a schema exists for it.
 

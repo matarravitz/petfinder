@@ -1,6 +1,6 @@
 # Feature: Cross-post match suggestions
 
-**Status:** design approved, not yet implemented.
+**Status:** implemented.
 **Last updated:** 2026-07-15
 
 ## Goal
