@@ -12,6 +12,8 @@ Building **web-first**; a native app version is planned for later and has not be
 
 Each feature gets its own markdown file under `docs/features/<feature-name>.md` (not the default `docs/superpowers/specs/` brainstorming location) — one file per feature, kept up to date as that feature evolves, rather than one-off dated spec snapshots.
 
+**These feature files follow the same maintenance rule as this file:** whenever you make an important or big change to a feature (new capability, behavior change, new component, changed UX flow), update its `docs/features/<feature-name>.md` in the same session — don't wait to be asked, and don't let it silently drift out of sync with the code. This applies to the living per-feature doc, not the one-time `-plan.md` implementation-plan snapshots (e.g. `photo-autofill-plan.md`, `messaging-plan.md`) — those are frozen historical task lists from the implementation pass and aren't meant to be kept current.
+
 ## Stack
 
 React 18.3.1 + Vite, plain JavaScript (no TypeScript), React Router v6. Supabase (Postgres + Auth + Storage + Realtime) via local dev stack (Supabase CLI + Docker). Vitest + React Testing Library for tests. Hand-written CSS custom-properties design system (no Tailwind/CSS-in-JS) in `src/features/layout/theme.css`. `@tensorflow/tfjs` + `@tensorflow-models/coco-ssd` + `@tensorflow-models/mobilenet` run client-side photo analysis (species/breed detection) for the in-progress photo auto-fill feature (`src/features/posts/photoAnalysis/`).

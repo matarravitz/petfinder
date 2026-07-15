@@ -1,7 +1,7 @@
 # Feature: In-site messaging
 
 **Status:** implemented (visual-only prototype — see Non-goals).
-**Last updated:** 2026-07-13
+**Last updated:** 2026-07-15
 
 ## Goal
 
@@ -33,14 +33,16 @@ One page, two panes, shown together:
 - **Right (thread):** the active conversation. Header: pet photo + other person's name + post reference (no back button — both panes are always visible, unlike a mobile flow). Message bubbles: theirs left/neutral, mine right/accent-colored. Input box pinned to the bottom of the pane.
 - Selecting a row in the list sets the active thread; the thread pane is empty (with a hint like "Select a conversation") until one is chosen. Selecting a row also clears that conversation's `unread` flag in local state.
 - The thread pane's send input is disabled/no-ops on empty or whitespace-only text, same pattern as the rest of the app's forms.
+- **Deleting a conversation:** each row has a second, icon-only delete button (`TrashIcon.jsx`) as a sibling of the select button, not nested inside it — same "two sibling buttons, not nested" pattern as the row itself (a `<button>` can't contain another `<button>`). Confirms via native `window.confirm('Delete this conversation? This cannot be undone.')` before removing it from state (`MessagesPage.handleDelete`); if the deleted conversation was active, `activeId` is cleared back to `null`. No undo — matches this app's other native-confirm destructive actions.
 
 **Responsive fallback (narrow browser windows, not the native app):** below a breakpoint (reuse the existing `640px` breakpoint pattern from `theme.css`), show only one pane at a time — the list by default, switching to the thread pane (with a back control) once a conversation is selected. This is a responsive fallback for the web page on a phone browser, not the native-app design — that's a separate future effort per `docs/future-app-ideas.md`.
 
 ## Components (`src/features/messages/`, new folder)
 
 - `MessagesPage.jsx` — owns which conversation is active (`useState`), renders the split pane (or the responsive single-pane fallback), and reads `location.state` (see Contact button below) to open/create a thread on arrival.
-- `ConversationList.jsx` — maps conversations to `ConversationRow`.
-- `ConversationRow.jsx` — one row: pet thumbnail, other person's name, post reference, last message preview, timestamp, unread dot.
+- `ConversationList.jsx` — maps conversations to `ConversationRow`, forwards `onSelect`/`onDelete`.
+- `ConversationRow.jsx` — a wrapper `div` with two sibling `<button>`s: `.conversation-row-select` (pet thumbnail, other person's name, post reference, last message preview, timestamp, unread dot) and `.conversation-row-delete` (icon-only, `TrashIcon.jsx`, `aria-label="Delete conversation with <name>"`) — see Deleting a conversation above.
+- `TrashIcon.jsx` — inline SVG, same hand-drawn-icon pattern as `PawPrintIcon`.
 - `ThreadPane.jsx` — header + scrollable message list + input box.
 - `MessageBubble.jsx` — one message bubble, styled left/right by a `fromMe` boolean.
 - `mockConversations.js` — fixture data module (see below). Not a Supabase call.
@@ -82,7 +84,7 @@ Exported as a function (not a plain array constant) so every call returns a fres
 ## Testing
 
 Vitest + RTL, same patterns as the rest of the app, exercised against fixture data — no Supabase mocking needed for chat this pass:
-- `ConversationList.test.jsx` / `ConversationRow.test.jsx` — renders rows with the right content, click selects a conversation.
+- `ConversationList.test.jsx` / `ConversationRow.test.jsx` — renders rows with the right content, click selects a conversation, delete button confirms via mocked `window.confirm` before calling `onDelete`.
 - `ThreadPane.test.jsx` — renders messages with correct left/right bubble styling, typing + sending appends a message.
 - `MessagesPage.test.jsx` — arriving via router state with `openPostId` opens/creates the right thread.
 - `PostDetailPage.test.jsx` — update for the new phone number field (tel: link / `—` fallback) and the Contact button's visibility logic.

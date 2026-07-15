@@ -1,7 +1,7 @@
 # Feature: Photo auto-fill on post creation
 
 **Status:** implemented.
-**Last updated:** 2026-07-14
+**Last updated:** 2026-07-15
 
 ## Goal
 
@@ -40,6 +40,8 @@ Runs only when species resolved to `cat` or `dog` — MobileNet's ImageNet class
 MobileNet's raw label (e.g. `"golden retriever"`) is matched against `BREEDS_BY_SPECIES[species]` (`src/features/posts/CreatePostForm.jsx`) by a plain keyword match — not another model call. On a confident match, set `breed` to the matched option. On no match, set `breed: "other"` and `breedOther` to the raw label (capitalized), so nothing is silently dropped. This mapping logic lives in its own pure, unit-testable module (see Testing).
 
 **Known limitation:** ImageNet's ~1000 classes don't cover every real breed (e.g. no "Scottish Fold" class at all). On an unrecognized breed, MobileNet doesn't say "unsure" — it returns whichever known class looks closest, sometimes with real confidence (observed: a Scottish Fold photo classified as "Persian"). The breed threshold was raised from 0.4 to 0.6 (matching species) specifically to cut down on these plausible-but-wrong guesses, trading away some correct guesses — mainly dogs, where MobileNet's coverage is better — for fewer confidently-wrong ones. `BREEDS_BY_SPECIES.cat` was also expanded (Scottish Fold, Abyssinian, Russian Blue, American Shorthair, Norwegian Forest Cat) so at least manual selection covers more real breeds, even though auto-detection still can't produce them.
+
+**Investigated and rejected (2026-07-15): swapping MobileNet/ImageNet for a cat-breed-specific model.** Researched whether a better client-side (TF.js, no backend/LLM) breed model exists. Findings: no maintained, pre-converted TF.js cat-breed model exists anywhere — every public "TF.js cat breed classifier" repo is an unmaintained student project that either wraps stock MobileNet unchanged or covers dogs only (Stanford Dogs). The standard academic dataset (Oxford-IIIT Pet, 12 cat breeds) still excludes Scottish Fold. The only dataset/model found with real Scottish Fold coverage (a 60-class HuggingFace model, ~89% claimed accuracy) is a 343MB PyTorch Vision Transformer — ~8x the current ~40MB model budget, a brittle ViT→TF.js conversion path (attention/LayerNorm ops are conversion-risk-prone), and unclear licensing on its underlying scraped training data. Training a custom small CNN on scraped Kaggle cat-breed data is technically feasible (clean Keras→TF.js path) but real effort — data licensing diligence, training, eval — for an accuracy ceiling that tops out around 66-70% on this fine-grained problem even in the research repos. Given a 2-second manual dropdown already covers the same breeds, this wasn't judged worth pursuing. Not re-litigating this without a genuinely new option (e.g. a maintained TF.js cat-breed package appearing) — check this note before re-researching the same ground.
 
 ## Color detection
 
