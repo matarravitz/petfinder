@@ -25,7 +25,7 @@ Client-side only, two pre-trained TensorFlow.js models chained together, plus a 
 3. **`@tensorflow-models/mobilenet`** (image classification, ImageNet's 1000 classes) runs on the **cropped** image to guess breed — cropping first keeps it from being distracted by background content and keeps the color read (next step) from being skewed by anything outside the animal.
 4. A plain pixel-based **dominant-color heuristic** (no model) runs on the same cropped `ImageData`.
 
-Models are loaded lazily — only on the first "Analyze Photo" click, not on page load — since this is an opt-in feature and shouldn't slow down the form for users who don't use it. Once loaded, the browser's normal HTTP cache keeps the weight files (~40MB combined) from being re-downloaded on subsequent visits.
+Models are loaded lazily, not on page load. `coco-ssd` loads only on the first "Analyze Photo" click, since species/breed/color auto-fill is opt-in and shouldn't slow down the form for users who don't use it. `mobilenet` also loads as soon as the first photo is selected, independent of that button — `post-matching.md`'s background embedding computation (`getPhotoEmbedding.js`) needs it for every post, not just ones where the user opts into auto-fill. Once loaded, the browser's normal HTTP cache keeps the weight files (~40MB combined) from being re-downloaded on subsequent visits.
 
 New dependencies: `@tensorflow/tfjs`, `@tensorflow-models/coco-ssd`, `@tensorflow-models/mobilenet`.
 
