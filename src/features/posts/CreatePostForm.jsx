@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { supabase } from '../../lib/supabaseClient.js'
@@ -6,6 +6,7 @@ import { buildPostPayload } from './buildPostPayload.js'
 import { createPost } from './postsApi.js'
 import LocationPicker from './LocationPicker.jsx'
 import { analyzePhoto } from './photoAnalysis/analyzePhoto.js'
+import { getPhotoEmbedding } from './photoAnalysis/getPhotoEmbedding.js'
 
 const SPECIES_OPTIONS = [
   { value: 'cat', label: 'Cat' },
@@ -124,6 +125,16 @@ export default function CreatePostForm() {
     return () => urls.forEach((url) => URL.revokeObjectURL(url))
   }, [files])
 
+  // Runs automatically in the background whenever the cover photo changes —
+  // unlike breed/species/color auto-fill, this isn't gated behind the
+  // "Analyze Photo" button, since match-suggestions needs an embedding for
+  // every post regardless of whether the user opts into auto-fill.
+  const photoEmbeddingPromiseRef = useRef(null)
+
+  useEffect(() => {
+    photoEmbeddingPromiseRef.current = files.length > 0 ? getPhotoEmbedding(files[0]) : null
+  }, [files])
+
   function update(field, value) {
     setForm((prev) => ({ ...prev, [field]: value }))
   }
@@ -217,6 +228,9 @@ export default function CreatePostForm() {
       return
     }
     try {
+      const photoEmbedding = photoEmbeddingPromiseRef.current
+        ? await photoEmbeddingPromiseRef.current
+        : null
       const effectiveBreed = form.breed === 'other' ? form.breedOther : form.breed
       const effectiveColor = form.color === 'other' ? form.colorOther : form.color
       const payload = buildPostPayload(
@@ -227,6 +241,7 @@ export default function CreatePostForm() {
           locationText: location.text,
           locationLat: location.lat,
           locationLng: location.lng,
+          photoEmbedding,
         },
         user.id
       )

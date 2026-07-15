@@ -6,10 +6,12 @@ import CreatePostForm from './CreatePostForm.jsx'
 import { useAuth } from '../auth/AuthContext.jsx'
 import * as postsApi from './postsApi.js'
 import { analyzePhoto } from './photoAnalysis/analyzePhoto.js'
+import { getPhotoEmbedding } from './photoAnalysis/getPhotoEmbedding.js'
 
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
 vi.mock('./postsApi.js', () => ({ createPost: vi.fn(() => Promise.resolve({ id: 'p1' })) }))
 vi.mock('./photoAnalysis/analyzePhoto.js', () => ({ analyzePhoto: vi.fn() }))
+vi.mock('./photoAnalysis/getPhotoEmbedding.js', () => ({ getPhotoEmbedding: vi.fn(() => Promise.resolve(null)) }))
 vi.mock('./LocationPicker.jsx', () => ({
   default: ({ value, onChange }) => (
     <button
@@ -213,6 +215,56 @@ async function uploadOnePhoto() {
   const file = new File(['fake-image-content'], 'dog.jpg', { type: 'image/jpeg' })
   await userEvent.upload(screen.getByLabelText(/choose photos/i), file)
 }
+
+test('computes a photo embedding in the background and includes it in the created post payload', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  getPhotoEmbedding.mockResolvedValue([0.1, 0.2, 0.3])
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await uploadOnePhoto()
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'cat')
+  await userEvent.click(screen.getByText('Pick a location (test stub)'))
+  await userEvent.type(screen.getByLabelText('Date lost/found'), '2026-07-01')
+  await userEvent.click(screen.getByText('Create post'))
+
+  await waitFor(() =>
+    expect(postsApi.createPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ photo_embedding: [0.1, 0.2, 0.3] }),
+      expect.any(Array)
+    )
+  )
+})
+
+test('submits with a null photo embedding when no photo was selected', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  getPhotoEmbedding.mockClear()
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'cat')
+  await userEvent.click(screen.getByText('Pick a location (test stub)'))
+  await userEvent.type(screen.getByLabelText('Date lost/found'), '2026-07-01')
+  await userEvent.click(screen.getByText('Create post'))
+
+  await waitFor(() =>
+    expect(postsApi.createPost).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ photo_embedding: null }),
+      []
+    )
+  )
+  expect(getPhotoEmbedding).not.toHaveBeenCalled()
+})
 
 test('shows a hint about photo auto-fill before a photo is uploaded, and hides it after', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
