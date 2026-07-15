@@ -15,6 +15,7 @@ test('maps a missing-pet form to a full post row, including reward and name', ()
       petName: 'Milo',
       rewardAmount: '50',
       phoneNumber: '050-1234567',
+      photoEmbedding: [0.1, 0.2, 0.3],
       locationLat: 32.08,
       locationLng: 34.78,
       locationText: 'Tel Aviv',
@@ -37,6 +38,7 @@ test('maps a missing-pet form to a full post row, including reward and name', ()
     pet_name: 'Milo',
     reward_amount: 50,
     phone_number: '050-1234567',
+    photo_embedding: [0.1, 0.2, 0.3],
     location_lat: 32.08,
     location_lng: 34.78,
     location_text: 'Tel Aviv',
@@ -78,4 +80,20 @@ test('defaults phone_number to null when not provided', () => {
   )
 
   expect(payload.phone_number).toBeNull()
+})
+
+test('defaults photo_embedding to null when no embedding was computed', () => {
+  const payload = buildPostPayload(
+    {
+      type: 'found',
+      species: 'dog',
+      locationLat: 1,
+      locationLng: 2,
+      locationText: 'somewhere',
+      dateLostOrFound: '2026-07-01',
+    },
+    'owner-2'
+  )
+
+  expect(payload.photo_embedding).toBeNull()
 })

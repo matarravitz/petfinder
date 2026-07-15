@@ -14,6 +14,7 @@ export function buildPostPayload(formValues, ownerId) {
     pet_name: isMissing ? formValues.petName || null : null,
     reward_amount: isMissing && formValues.rewardAmount ? Number(formValues.rewardAmount) : null,
     phone_number: formValues.phoneNumber || null,
+    photo_embedding: formValues.photoEmbedding || null,
     location_lat: formValues.locationLat,
     location_lng: formValues.locationLng,
     location_text: formValues.locationText,
