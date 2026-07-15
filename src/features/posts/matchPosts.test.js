@@ -57,30 +57,29 @@ describe('findMatches', () => {
     expect(resultPostSide[0].score).toBeCloseTo(1, 5)
   })
 
-  test('includes a candidate whose score lands exactly at the match threshold', () => {
-    // Use the renormalized (no-embedding) path: score = location*0.6 + date*0.4.
-    // Keep the date identical (dateScore = 1, contributing 1 * 0.4 = 0.4).
-    // Solve for the location term: location * 0.6 = 0.1 => location = 1/6.
-    // location = 1 - distanceKm/50 => distanceKm = 50 * (5/6) = 250/6 km.
-    // Nudge the distance a hair under the exact solution: floating-point
-    // rounding through the trig chain otherwise lands the score a hair
-    // *below* 0.5 (e.g. 0.4999999999999961) and gets wrongly excluded by an
-    // unrelated fp-precision issue rather than by the >= boundary itself.
-    const targetDistanceKm = 250 / 6 - 1e-7
-    const earthRadiusKm = 6371
-    // Offsetting only latitude (same longitude) keeps haversine's central
-    // angle equal to the radian delta directly: distance = earthRadiusKm * dLatRad.
-    const dLatDeg = (targetDistanceKm / earthRadiusKm) * (180 / Math.PI)
-
-    const post = { ...basePost, photo_embedding: null }
-    const candidate = buildCandidate({
-      photo_embedding: null,
-      location_lat: basePost.location_lat + dLatDeg,
-    })
+  test('includes a candidate whose score lands exactly at the match threshold and is included', () => {
+    // Full-signal branch (both posts have photo_embedding): score =
+    // visual*0.5 + location*0.3 + date*0.2.
+    //
+    // Identical lat/lng makes haversineDistanceKm resolve to exactly 0
+    // (sin(0) and atan2(0, 1) both resolve with no fp error), so
+    // locationScore = 1 - 0/50 = 1 exactly. Identical dates make
+    // daysApart = 0, so dateScore = Math.exp(-0) = 1 exactly. Orthogonal
+    // unit embeddings make cosineSimilarity's dot product exactly 0, so the
+    // visual term drops out entirely (no division-error risk since both
+    // magnitudes are exactly 1).
+    //
+    // Score = 0*0.5 + 1*0.3 + 1*0.2, which is bit-exact 0.5 in IEEE-754
+    // double precision (verified via `node -e "console.log((0*0.5 + 1*0.3 +
+    // 1*0.2) === 0.5)"` -> true) — this does not rely on the general
+    // "floats are imprecise" behavior, it's the well-known exact case for
+    // these specific operands.
+    const post = { ...basePost, photo_embedding: [1, 0, 0] }
+    const candidate = buildCandidate({ photo_embedding: [0, 1, 0] })
 
     const result = findMatches(post, [candidate])
     expect(result).toHaveLength(1)
-    expect(result[0].score).toBeCloseTo(0.5, 5)
+    expect(result[0].score).toBe(0.5)
   })
 
   test('excludes candidates scoring below the match threshold', () => {
