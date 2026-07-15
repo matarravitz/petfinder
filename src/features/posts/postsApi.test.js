@@ -1,5 +1,5 @@
 import { createFakeQuery, createFakeSupabase } from '../../testUtils/fakeSupabase.js'
-import { listPosts, getPost, createPost, resolvePost } from './postsApi.js'
+import { listPosts, getPost, createPost, resolvePost, listCandidatePostsForMatching } from './postsApi.js'
 
 test('listPosts returns the query result data', async () => {
   const postsQuery = createFakeQuery({ data: [{ id: 'p1' }], error: null })
@@ -36,4 +36,15 @@ test('resolvePost updates the post status to resolved', async () => {
   const postsQuery = createFakeQuery({ data: null, error: null })
   const supabase = createFakeSupabase({ posts: postsQuery })
   await expect(resolvePost(supabase, 'p1')).resolves.toBeUndefined()
+})
+
+test('listCandidatePostsForMatching returns candidate posts for the opposite type/species', async () => {
+  const postsQuery = createFakeQuery({ data: [{ id: 'p2' }], error: null })
+  const supabase = createFakeSupabase({ posts: postsQuery })
+  const result = await listCandidatePostsForMatching(supabase, {
+    type: 'found',
+    species: 'cat',
+    excludePostId: 'p1',
+  })
+  expect(result).toEqual([{ id: 'p2' }])
 })

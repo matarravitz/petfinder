@@ -43,3 +43,15 @@ export async function resolvePost(supabase, postId) {
   const { error } = await supabase.from('posts').update({ status: 'resolved' }).eq('id', postId)
   if (error) throw error
 }
+
+export async function listCandidatePostsForMatching(supabase, { type, species, excludePostId }) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, post_photos(*), profiles(display_name)')
+    .eq('type', type)
+    .eq('species', species)
+    .eq('status', 'active')
+    .neq('id', excludePostId)
+  if (error) throw error
+  return data
+}
