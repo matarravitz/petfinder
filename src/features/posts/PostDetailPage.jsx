@@ -20,6 +20,19 @@ export default function PostDetailPage() {
   const [matchesError, setMatchesError] = useState(null)
 
   useEffect(() => {
+    // Reset all post- and match-derived state before fetching the new post.
+    // React Router reuses this component instance across in-app navigation
+    // between /post/:id routes (no remount), so without this reset a new
+    // post's data would render under the previous post's stale `matches`
+    // (and `matchesChecked` would still be `true`, skipping the auto-check
+    // effect below for the new post entirely).
+    setPost(null)
+    setError(null)
+    setMatches([])
+    setMatchesChecked(false)
+    setMatchesLoading(false)
+    setMatchesError(null)
+
     getPost(supabase, id)
       .then(setPost)
       .catch((err) => setError(err.message))

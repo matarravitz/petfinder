@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, createMemoryRouter, RouterProvider } from 'react-router-dom'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import PostDetailPage from './PostDetailPage.jsx'
@@ -299,4 +299,55 @@ test('the Check for new matches button re-runs the match query', async () => {
   await userEvent.click(screen.getByRole('button', { name: 'Check for new matches' }))
 
   await waitFor(() => expect(postsApi.listCandidatePostsForMatching).toHaveBeenCalledTimes(2))
+})
+
+// Regression test for: App.jsx routes /post/:id to a single <PostDetailPage />
+// element, so React Router reuses the SAME component instance across in-app
+// navigation between two posts (no remount) — a plain two-call render() setup
+// would trivially reset React state and wouldn't reproduce the bug. This uses
+// createMemoryRouter/RouterProvider (both real, unmocked react-router-dom
+// exports — only useNavigate is mocked above) so router.navigate() drives the
+// same mounted <PostDetailPage /> from /post/pA to /post/pB, exactly like a
+// user clicking a <Link> to a different post would.
+test('resets stale match state when navigating in-app to a different owned post', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+
+  const postA = { ...activeOwnedPost, id: 'pA' }
+  const postB = { ...activeOwnedPost, id: 'pB' }
+  postsApi.getPost.mockResolvedValueOnce(postA).mockResolvedValueOnce(postB)
+  postsApi.listCandidatePostsForMatching
+    .mockResolvedValueOnce([buildCandidatePost({ id: 'match-a', location_text: 'Candidate A spot' })])
+    .mockResolvedValueOnce([buildCandidatePost({ id: 'match-b', location_text: 'Candidate B spot' })])
+
+  const router = createMemoryRouter([{ path: '/post/:id', element: <PostDetailPage /> }], {
+    initialEntries: ['/post/pA'],
+  })
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('Candidate A spot', { exact: false })).toBeInTheDocument()
+  expect(postsApi.listCandidatePostsForMatching).toHaveBeenCalledTimes(1)
+  expect(postsApi.listCandidatePostsForMatching).toHaveBeenLastCalledWith(
+    expect.anything(),
+    expect.objectContaining({ excludePostId: 'pA' })
+  )
+
+  // Wrapped in act() so React fully flushes the reset (post/matches state set
+  // back to their initial values) before the getPost(pB) promise resolves —
+  // without this, the reset's setState calls and the getPost(pB).then(setPost)
+  // callback can land in separate, out-of-order commits and flakily leave
+  // matchesChecked stuck at its post-A value for a render or two.
+  await act(async () => {
+    await router.navigate('/post/pB')
+  })
+
+  // Post B's data must replace post A's, not render alongside/under it — the
+  // stale match card from post A must be gone, and post B's own match (from
+  // a fresh listCandidatePostsForMatching call keyed on post B) must appear.
+  await waitFor(() => expect(screen.queryByText('Candidate A spot', { exact: false })).not.toBeInTheDocument())
+  expect(await screen.findByText('Candidate B spot', { exact: false })).toBeInTheDocument()
+  expect(postsApi.listCandidatePostsForMatching).toHaveBeenCalledTimes(2)
+  expect(postsApi.listCandidatePostsForMatching).toHaveBeenLastCalledWith(
+    expect.anything(),
+    expect.objectContaining({ excludePostId: 'pB' })
+  )
 })
