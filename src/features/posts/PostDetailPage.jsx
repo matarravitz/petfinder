@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
-import { getPost, resolvePost } from './postsApi.js'
+import { getPost, resolvePost, listCandidatePostsForMatching } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { buildPhotoUrl } from '../../lib/photoUrl.js'
 import PawPrintIcon from '../layout/PawPrintIcon.jsx'
+import PostCard from './PostCard.jsx'
+import { findMatches, matchLabelForScore } from './matchPosts.js'
 
 export default function PostDetailPage() {
   const { id } = useParams()
@@ -12,12 +14,47 @@ export default function PostDetailPage() {
   const navigate = useNavigate()
   const [post, setPost] = useState(null)
   const [error, setError] = useState(null)
+  const [matches, setMatches] = useState([])
+  const [matchesChecked, setMatchesChecked] = useState(false)
+  const [matchesLoading, setMatchesLoading] = useState(false)
+  const [matchesError, setMatchesError] = useState(null)
 
   useEffect(() => {
     getPost(supabase, id)
       .then(setPost)
       .catch((err) => setError(err.message))
   }, [id])
+
+  async function checkForMatches(currentPost) {
+    setMatchesLoading(true)
+    setMatchesError(null)
+    try {
+      const oppositeType = currentPost.type === 'missing' ? 'found' : 'missing'
+      const candidates = await listCandidatePostsForMatching(supabase, {
+        type: oppositeType,
+        species: currentPost.species,
+        excludePostId: currentPost.id,
+      })
+      setMatches(findMatches(currentPost, candidates))
+    } catch {
+      setMatchesError("Couldn't check for matches right now.")
+    } finally {
+      setMatchesLoading(false)
+      setMatchesChecked(true)
+    }
+  }
+
+  // Runs once, automatically, the first time the owner views their own active
+  // post — this is the "automatic" half of match-checking (pull-based, on
+  // view, not a push notification). Computed from `user`/`post` directly
+  // (not the render-scoped `isOwner` below, which is defined after the early
+  // returns) so this hook can be called unconditionally, before those returns.
+  useEffect(() => {
+    if (post && user && user.id === post.owner_id && post.status === 'active' && !matchesChecked) {
+      checkForMatches(post)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post, user])
 
   if (error) return <p role="alert">{error}</p>
   if (!post) return <p>Loading...</p>
@@ -130,6 +167,34 @@ export default function PostDetailPage() {
 
       {isOwner && post.status !== 'resolved' && (
         <button onClick={handleResolve}>Mark as resolved</button>
+      )}
+
+      {isOwner && post.status === 'active' && (
+        <div className="possible-matches">
+          <h3 className="possible-matches-title">Possible Matches</h3>
+          {matchesError && <p className="possible-matches-error">{matchesError}</p>}
+          {matchesChecked && !matchesLoading && matches.length === 0 && !matchesError && (
+            <p className="possible-matches-empty">No possible matches found yet.</p>
+          )}
+          {matches.length > 0 && (
+            <div className="possible-matches-list">
+              {matches.map(({ post: candidate, score }) => (
+                <div key={candidate.id} className="match-card">
+                  <span className="match-score-badge">{matchLabelForScore(score)}</span>
+                  <PostCard post={candidate} />
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            className="possible-matches-recheck-button"
+            onClick={() => checkForMatches(post)}
+            disabled={matchesLoading}
+          >
+            {matchesLoading ? 'Checking…' : 'Check for new matches'}
+          </button>
+        </div>
       )}
     </div>
   )

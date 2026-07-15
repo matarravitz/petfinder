@@ -17,8 +17,18 @@ vi.mock('./postsApi.js', () => ({
     Promise.resolve({ id: 'p1', owner_id: 'owner-1', type: 'missing', species: 'cat', location_text: 'Tel Aviv', post_photos: [] })
   ),
   resolvePost: vi.fn(() => Promise.resolve()),
+  listCandidatePostsForMatching: vi.fn(() => Promise.resolve([])),
 }))
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
+
+beforeEach(() => {
+  // Mock call history (e.g. postsApi.listCandidatePostsForMatching.mock.calls)
+  // otherwise leaks across tests in this file — vitest doesn't clear it
+  // automatically, and several tests below assert on call counts
+  // (toHaveBeenCalledTimes, not.toHaveBeenCalled). This clears recorded
+  // calls/results only, not the default mock implementations set above.
+  vi.clearAllMocks()
+})
 
 function renderAtPost(id) {
   return render(
@@ -203,4 +213,90 @@ test('does not show a Contact publisher button when logged out', async () => {
 
   await waitFor(() => screen.getByText(/Missing: cat/))
   expect(screen.queryByRole('button', { name: 'Contact publisher' })).not.toBeInTheDocument()
+})
+
+const activeOwnedPost = {
+  id: 'p10',
+  owner_id: 'owner-1',
+  type: 'missing',
+  species: 'cat',
+  location_text: 'Tel Aviv',
+  location_lat: 32.08,
+  location_lng: 34.78,
+  date_lost_or_found: '2026-07-01',
+  status: 'active',
+  photo_embedding: null,
+  post_photos: [],
+}
+
+function buildCandidatePost(overrides = {}) {
+  return {
+    id: 'candidate-1',
+    type: 'found',
+    species: 'cat',
+    location_lat: 32.08,
+    location_lng: 34.78,
+    date_lost_or_found: '2026-07-01',
+    photo_embedding: null,
+    post_photos: [],
+    ...overrides,
+  }
+}
+
+test('owner sees a possible match found for their active post', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce(activeOwnedPost)
+  postsApi.listCandidatePostsForMatching.mockResolvedValueOnce([buildCandidatePost()])
+  renderAtPost('p10')
+
+  expect(await screen.findByText('Possible Matches')).toBeInTheDocument()
+  expect(await screen.findByText('Strong match')).toBeInTheDocument()
+  expect(postsApi.listCandidatePostsForMatching).toHaveBeenCalledWith(expect.anything(), {
+    type: 'found',
+    species: 'cat',
+    excludePostId: 'p10',
+  })
+})
+
+test('non-owner never sees the Possible Matches section', async () => {
+  useAuth.mockReturnValue({ user: { id: 'someone-else' } })
+  postsApi.getPost.mockResolvedValueOnce(activeOwnedPost)
+  renderAtPost('p10')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  expect(screen.queryByText('Possible Matches')).not.toBeInTheDocument()
+  expect(postsApi.listCandidatePostsForMatching).not.toHaveBeenCalled()
+})
+
+test('resolved post never shows the Possible Matches section, even for the owner', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce({ ...activeOwnedPost, status: 'resolved' })
+  renderAtPost('p10')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  expect(screen.queryByText('Possible Matches')).not.toBeInTheDocument()
+  expect(postsApi.listCandidatePostsForMatching).not.toHaveBeenCalled()
+})
+
+test('shows an empty state when no candidates score high enough to be a match', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce(activeOwnedPost)
+  postsApi.listCandidatePostsForMatching.mockResolvedValueOnce([
+    buildCandidatePost({ location_lat: 60, location_lng: 60, date_lost_or_found: '2020-01-01' }),
+  ])
+  renderAtPost('p10')
+
+  expect(await screen.findByText('No possible matches found yet.')).toBeInTheDocument()
+})
+
+test('the Check for new matches button re-runs the match query', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce(activeOwnedPost)
+  postsApi.listCandidatePostsForMatching.mockResolvedValue([])
+  renderAtPost('p10')
+
+  await screen.findByText('No possible matches found yet.')
+  await userEvent.click(screen.getByRole('button', { name: 'Check for new matches' }))
+
+  await waitFor(() => expect(postsApi.listCandidatePostsForMatching).toHaveBeenCalledTimes(2))
 })
