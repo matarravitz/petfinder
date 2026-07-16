@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
-import { getPost, resolvePost, listCandidatePostsForMatching } from './postsApi.js'
+import { getPost, resolvePost, deletePost, listCandidatePostsForMatching } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { buildPhotoUrl } from '../../lib/photoUrl.js'
 import PawPrintIcon from '../layout/PawPrintIcon.jsx'
@@ -78,6 +78,13 @@ export default function PostDetailPage() {
   async function handleResolve() {
     await resolvePost(supabase, post.id)
     setPost((prev) => ({ ...prev, status: 'resolved' }))
+  }
+
+  async function handleDelete() {
+    const confirmed = window.confirm('Remove this post? This cannot be undone.')
+    if (!confirmed) return
+    await deletePost(supabase, post.id)
+    navigate('/browse')
   }
 
   function handleContact() {
@@ -179,7 +186,23 @@ export default function PostDetailPage() {
       )}
 
       {isOwner && post.status !== 'resolved' && (
-        <button onClick={handleResolve}>Mark as resolved</button>
+        <div className="resolve-prompt">
+          <p className="resolve-prompt-question">
+            {isMissing ? `Did you find ${post.pet_name || 'your pet'}?` : 'Reunited them with their owner?'}
+          </p>
+          <p className="resolve-prompt-subtext">
+            {isMissing ? 'Let us know so we can stop searching.' : 'Let us know so we can close this post.'}
+          </p>
+          <button type="button" className="resolve-prompt-button" onClick={handleResolve}>
+            {isMissing ? "Yes, we're reunited! 🎉" : "Yes, they're home! 🎉"}
+          </button>
+        </div>
+      )}
+
+      {isOwner && post.status !== 'resolved' && (
+        <button type="button" className="resolve-prompt-remove-link" onClick={handleDelete}>
+          Not the case? Remove this post instead
+        </button>
       )}
 
       {isOwner && post.status === 'active' && (

@@ -44,6 +44,14 @@ export async function resolvePost(supabase, postId) {
   if (error) throw error
 }
 
+// post_photos rows cascade-delete with the post (see supabase/migrations/0001_init.sql's
+// `references posts(id) on delete cascade`); this does not remove the underlying files
+// from the post-photos storage bucket.
+export async function deletePost(supabase, postId) {
+  const { error } = await supabase.from('posts').delete().eq('id', postId)
+  if (error) throw error
+}
+
 export async function listCandidatePostsForMatching(supabase, { type, species, excludePostId }) {
   const { data, error } = await supabase
     .from('posts')

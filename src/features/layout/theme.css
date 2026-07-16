@@ -560,6 +560,58 @@ body {
   color: var(--color-accent);
 }
 
+.resolve-prompt {
+  background: var(--color-accent-tint);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  margin: var(--space-md) 0;
+}
+
+.resolve-prompt-question {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0 0 2px;
+}
+
+.resolve-prompt-subtext {
+  color: var(--color-muted);
+  margin: 0 0 var(--space-md);
+}
+
+.resolve-prompt-button {
+  display: inline-block;
+  font-family: var(--font-family-body);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius-button);
+  padding: var(--space-sm) var(--space-lg);
+  cursor: pointer;
+}
+
+/* Deliberately understated relative to .resolve-prompt-button — this is a
+   valid, equally-legitimate choice (the search didn't end happily, or the
+   post is a duplicate/no-longer-relevant), not a rarely-used escape hatch,
+   so it stays visible and plainly labeled rather than hidden — but it
+   shouldn't visually compete with the celebratory card above it. */
+.resolve-prompt-remove-link {
+  display: block;
+  margin-top: var(--space-xs);
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--color-muted);
+  font-family: var(--font-family-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.resolve-prompt-remove-link:hover {
+  text-decoration: underline;
+}
+
 .post-detail-photos {
   display: flex;
   flex-wrap: wrap;

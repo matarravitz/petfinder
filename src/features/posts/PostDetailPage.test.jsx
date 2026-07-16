@@ -17,6 +17,7 @@ vi.mock('./postsApi.js', () => ({
     Promise.resolve({ id: 'p1', owner_id: 'owner-1', type: 'missing', species: 'cat', location_text: 'Tel Aviv', post_photos: [] })
   ),
   resolvePost: vi.fn(() => Promise.resolve()),
+  deletePost: vi.fn(() => Promise.resolve()),
   listCandidatePostsForMatching: vi.fn(() => Promise.resolve([])),
 }))
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
@@ -40,22 +41,102 @@ function renderAtPost(id) {
   )
 }
 
-test('owner sees a resolve button and it marks the post resolved', async () => {
+test('owner sees a friendly resolve prompt for a missing pet and it marks the post resolved', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
   renderAtPost('p1')
 
   await waitFor(() => screen.getByText(/Missing: cat/))
-  await userEvent.click(screen.getByText('Mark as resolved'))
+  expect(screen.getByText('Did you find your pet?')).toBeInTheDocument()
+  expect(screen.getByText('Let us know so we can stop searching.')).toBeInTheDocument()
+  await userEvent.click(screen.getByRole('button', { name: "Yes, we're reunited! 🎉" }))
 
   expect(postsApi.resolvePost).toHaveBeenCalledWith(expect.anything(), 'p1')
 })
 
-test('non-owner does not see a resolve button', async () => {
+test('uses the pet name in the resolve prompt when one is set', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p8',
+    owner_id: 'owner-1',
+    type: 'missing',
+    species: 'cat',
+    pet_name: 'Milo',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+  })
+  renderAtPost('p8')
+
+  expect(await screen.findByText('Did you find Milo?')).toBeInTheDocument()
+})
+
+test('resolve prompt reads differently for a found-pet post', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p9',
+    owner_id: 'owner-1',
+    type: 'found',
+    species: 'dog',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+  })
+  renderAtPost('p9')
+
+  expect(await screen.findByText('Reunited them with their owner?')).toBeInTheDocument()
+  expect(screen.getByText('Let us know so we can close this post.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: "Yes, they're home! 🎉" })).toBeInTheDocument()
+})
+
+test('non-owner does not see a resolve prompt', async () => {
   useAuth.mockReturnValue({ user: { id: 'someone-else' } })
   renderAtPost('p1')
 
   await waitFor(() => screen.getByText(/Missing: cat/))
-  expect(screen.queryByText('Mark as resolved')).not.toBeInTheDocument()
+  expect(screen.queryByText('Did you find your pet?')).not.toBeInTheDocument()
+  expect(screen.queryByText('Not the case? Remove this post instead')).not.toBeInTheDocument()
+})
+
+test('owner can remove a post instead of resolving it, after confirming', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderAtPost('p1')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  await userEvent.click(screen.getByRole('button', { name: 'Not the case? Remove this post instead' }))
+
+  expect(window.confirm).toHaveBeenCalledWith('Remove this post? This cannot be undone.')
+  expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'p1')
+  expect(mockNavigate).toHaveBeenCalledWith('/browse')
+  window.confirm.mockRestore()
+})
+
+test('declining the remove confirmation leaves the post untouched', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderAtPost('p1')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  await userEvent.click(screen.getByRole('button', { name: 'Not the case? Remove this post instead' }))
+
+  expect(postsApi.deletePost).not.toHaveBeenCalled()
+  expect(mockNavigate).not.toHaveBeenCalled()
+  window.confirm.mockRestore()
+})
+
+test('the remove-post option is not shown once a post is already resolved', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.getPost.mockResolvedValueOnce({
+    id: 'p10',
+    owner_id: 'owner-1',
+    type: 'missing',
+    species: 'cat',
+    location_text: 'Tel Aviv',
+    post_photos: [],
+    status: 'resolved',
+  })
+  renderAtPost('p10')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  expect(screen.queryByText('Not the case? Remove this post instead')).not.toBeInTheDocument()
 })
 
 test('shows full post fields and photos when present', async () => {
