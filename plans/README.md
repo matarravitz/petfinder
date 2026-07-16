@@ -13,10 +13,10 @@ and update your row when done.
 | Plan | Title | Priority | Effort | Category | Depends on | Status |
 |------|-------|----------|--------|----------|------------|--------|
 | 001 | Add a GitHub Actions CI workflow | P1 | S | dx | — | DONE |
-| 002 | Scope storage upload policy to post ownership | P1 | S | security | — | TODO |
-| 003 | Add storage delete policy + clean up files on post deletion | P1 | S-M | security | — | TODO |
-| 004 | Enforce bump cooldown server-side | P1 | S | security | — | TODO |
-| 005 | Fix TF.js model loader permanently caching a failed load | P1 | S | bug | — | TODO |
+| 002 | Scope storage upload policy to post ownership | P1 | S | security | — | DONE |
+| 003 | Add storage delete policy + clean up files on post deletion | P1 | S-M | security | — | DONE |
+| 004 | Enforce bump cooldown server-side | P1 | S | security | — | DONE |
+| 005 | Fix TF.js model loader permanently caching a failed load | P1 | S | bug | — | DONE |
 | 006 | Batch expired-post deletion into a single request | P1 | S | perf | — | TODO |
 | 007 | Add error handling to post renew/remove/bump/resolve actions | P2 | S-M | bug | — | TODO |
 | 008 | Stop over-fetching photo_embedding on list queries | P2 | S | perf | — | TODO |
