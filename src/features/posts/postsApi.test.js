@@ -10,6 +10,7 @@ import {
   listPostsByOwner,
   renewPost,
   bumpPost,
+  POST_LIST_COLUMNS,
 } from './postsApi.js'
 
 test('listPosts returns the query result data', async () => {
@@ -139,6 +140,11 @@ test('bumpPost throws when the RPC returns an error', async () => {
   const rpcFn = vi.fn(() => Promise.resolve({ error: new Error('cooldown active') }))
   const supabase = createFakeSupabase({ rpc: rpcFn })
   await expect(bumpPost(supabase, 'p1')).rejects.toThrow('cooldown active')
+})
+
+test('the shared list-query column selection excludes photo_embedding', () => {
+  expect(POST_LIST_COLUMNS).not.toMatch(/photo_embedding/)
+  expect(POST_LIST_COLUMNS).toMatch(/post_photos/)
 })
 
 test('listCandidatePostsForMatching returns candidate posts for the opposite type/species', async () => {

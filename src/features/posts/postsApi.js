@@ -2,10 +2,21 @@
 // actually moves a post to the front — bumped_at defaults to created_at at
 // insert time, so this is equivalent to created_at ordering until a post is
 // ever bumped.
+//
+// Explicit column list (excluding photo_embedding) rather than select('*')
+// — photo_embedding is a ~1024-number jsonb vector only needed by
+// listCandidatePostsForMatching (see below), never read by Browse/PostCard,
+// so including it here ships an unused, sizeable payload on every post row.
+export const POST_LIST_COLUMNS =
+  'id, owner_id, type, species, breed, color, size, collar, collar_description, microchipped, ' +
+  'distinctive_markings, pet_name, reward_amount, phone_number, location_lat, location_lng, ' +
+  'location_text, date_lost_or_found, status, created_at, renewed_at, bumped_at, ' +
+  'post_photos(*), profiles(display_name)'
+
 export async function listPosts(supabase) {
   const { data, error } = await supabase
     .from('posts')
-    .select('*, post_photos(*), profiles(display_name)')
+    .select(POST_LIST_COLUMNS)
     .order('bumped_at', { ascending: false })
   if (error) throw error
   return data
@@ -100,7 +111,7 @@ export async function deletePosts(supabase, postIds) {
 export async function listPostsByOwner(supabase, ownerId) {
   const { data, error } = await supabase
     .from('posts')
-    .select('*, post_photos(*), profiles(display_name)')
+    .select(POST_LIST_COLUMNS)
     .eq('owner_id', ownerId)
     .order('bumped_at', { ascending: false })
   if (error) throw error
