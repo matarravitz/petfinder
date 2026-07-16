@@ -73,7 +73,7 @@ New "Possible Matches" section on `PostDetailPage.jsx`, visible **only to the po
 
 ## Follow-up (tracked in `docs/TODO.md`, explicitly out of scope here)
 
-- "My Posts" dashboard with a match-count badge per post.
+- ~~"My Posts" dashboard~~ — built 2026-07-16 as `MyPostsDashboard.jsx` (`/my-posts`). Shipped without the match-count badge (deferred again, on purpose — a badge means running the matching pipeline per post just to render the list); still an open follow-up if wanted later.
 - Backfilling `photo_embedding` for posts created before this feature (existing posts + `scripts/seed-test-posts.mjs`).
 - pgvector-based server-side similarity search, if the naive client-side approach becomes a real scale bottleneck.
 - Push/email notifications when a new match appears for one of your posts (blocked on a real notification system).

@@ -1,5 +1,13 @@
 import { createFakeQuery, createFakeSupabase } from '../../testUtils/fakeSupabase.js'
-import { listPosts, getPost, createPost, resolvePost, listCandidatePostsForMatching, deletePost } from './postsApi.js'
+import {
+  listPosts,
+  getPost,
+  createPost,
+  resolvePost,
+  listCandidatePostsForMatching,
+  deletePost,
+  listPostsByOwner,
+} from './postsApi.js'
 
 test('listPosts returns the query result data', async () => {
   const postsQuery = createFakeQuery({ data: [{ id: 'p1' }], error: null })
@@ -42,6 +50,13 @@ test('deletePost deletes the post by id', async () => {
   const postsQuery = createFakeQuery({ data: null, error: null })
   const supabase = createFakeSupabase({ posts: postsQuery })
   await expect(deletePost(supabase, 'p1')).resolves.toBeUndefined()
+})
+
+test('listPostsByOwner returns posts belonging to the given owner', async () => {
+  const postsQuery = createFakeQuery({ data: [{ id: 'p3' }], error: null })
+  const supabase = createFakeSupabase({ posts: postsQuery })
+  const result = await listPostsByOwner(supabase, 'owner-1')
+  expect(result).toEqual([{ id: 'p3' }])
 })
 
 test('listCandidatePostsForMatching returns candidate posts for the opposite type/species', async () => {

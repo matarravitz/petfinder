@@ -52,6 +52,16 @@ export async function deletePost(supabase, postId) {
   if (error) throw error
 }
 
+export async function listPostsByOwner(supabase, ownerId) {
+  const { data, error } = await supabase
+    .from('posts')
+    .select('*, post_photos(*), profiles(display_name)')
+    .eq('owner_id', ownerId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return data
+}
+
 export async function listCandidatePostsForMatching(supabase, { type, species, excludePostId }) {
   const { data, error } = await supabase
     .from('posts')

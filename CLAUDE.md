@@ -53,7 +53,7 @@ SUPABASE_SERVICE_ROLE_KEY=<from `supabase status`>  # scripts/*.mjs only; never 
 public/favicon.svg           # paw-print favicon, reuses PawPrintIcon's exact path data
 index.html                   # links favicon.svg; <title>PetFinder</title>
 src/
-  App.jsx                    # routes: / /browse /login /signup /post/new /post/:id /messages
+  App.jsx                    # routes: / /browse /login /signup /post/new /post/:id /my-posts /messages
   features/
     auth/                    # AuthContext, LoginPage, SignupPage — password show/hide toggle,
                               # confirm-password field (signup only), .auth-page/.auth-card/
@@ -79,12 +79,15 @@ src/
       LocationPicker.jsx     # Leaflet map + live geocoding search (see Gotchas)
       PostDetailPage.jsx     # fixed-grid detail fields, resolve action, Contact publisher button
                               # (navigates to /messages with location.state — see Gotchas)
+      MyPostsDashboard.jsx    # owner's own posts at /my-posts, split into Active/Resolved sections,
+                              # reuses PostCard; own auth guard (see Gotchas), not just the nav link
       photoAnalysis/          # client-side species/breed/color detection (TF.js), see Gotchas
         models.js              # shared memoized TF.js model loaders (coco-ssd, mobilenet) — analyzePhoto.js
                                 # and getPhotoEmbedding.js both import from here, not their own copies
         getPhotoEmbedding.js    # MobileNet embedding vector for cross-post match suggestions
         cosineSimilarity.js     # pure vector-similarity helper used by matchPosts.js
-      postsApi.js            # listPosts/getPost/createPost/resolvePost/deletePost/listCandidatePostsForMatching
+      postsApi.js            # listPosts/getPost/createPost/resolvePost/deletePost/listPostsByOwner/
+                              # listCandidatePostsForMatching
       matchPosts.js           # pure hybrid scoring (visual + location + date) for match suggestions
       buildPostPayload.js    # pure function: form state -> DB insert payload
       filterPosts.js         # pure function: filterAndSortPosts(posts, filters)
@@ -153,6 +156,7 @@ Router-state assertions (e.g. redirect-after-login) need an actual `<Routes>`/`<
 - **New tables need explicit grants**: `supabase/migrations/0003_grants.sql` exists because tables created via raw SQL migrations (rather than the Supabase Dashboard) don't automatically get anon/authenticated/service_role privileges on this Supabase CLI/Postgres image — RLS policies alone aren't enough, every API query 403s with `permission denied for table ... (42501)` without them. If you add a new table in a later migration and hit that error, add the same `grant`/`alter default privileges` pattern.
 - **`supabase db reset` wipes seeded data**: it drops and replays every migration from scratch — fine for schema changes, but it also deletes anything inserted outside a migration, including the demo posts from `scripts/seed-test-posts.mjs`. After running `db reset` (e.g. to apply a new migration locally), re-run `nvm exec 22 node scripts/seed-test-posts.mjs` or the browse/home pages will look empty. This already happened once (Task 1 of the messaging feature ran `db reset` and silently wiped all seeded posts).
 - **Redirect-after-login pattern**: any nav link/action that should work whether or not the user is logged in (e.g. "Messages") should still render when logged out, but point at `/login` with router state `{ from: '<target path>' }` instead of hiding itself. `LoginPage`/`SignupPage` both read `location.state?.from` and `navigate(from)` after a successful sign in/up (falling back to `/`), and forward that same state through the Log in ↔ Sign up switch link so either auth path redirects correctly. Reuse this pattern for future protected actions rather than inventing a new one.
+- **Pages that need a real per-user query (not just a nav-link gate) must guard themselves too, and must wait on `useAuth()`'s `loading` flag before redirecting.** `MyPostsDashboard.jsx` is the first page to do this: the nav link alone only stops users who click through it — visiting the URL directly while logged out bypasses it entirely. Naively redirecting whenever `!user` also mis-fires on every load for a genuinely logged-in user, because `AuthContext`'s initial `supabase.auth.getSession()` call is async — `user` is briefly `null` before it resolves. Gate the redirect on `!authLoading && !user`, not just `!user` (see `MyPostsDashboard.jsx`'s effect). No other page currently reads `loading` from `useAuth()`; reuse this pattern for future pages that need real auth-gated data, not just nav visibility.
 - **`ConversationRow` is a wrapper div with two sibling buttons, not one button**: it needs both a "select this conversation" click target and a "delete" click target, and a `<button>` cannot contain another `<button>` (invalid HTML — same class of bug as the `PostCard`/`Link` nesting issue above). `.conversation-row` (div) → `.conversation-row-select` (button) + `.conversation-row-delete` (button), siblings, not nested.
 - **`.conversation-row-delete` is icon-only (`TrashIcon.jsx`), no visible text**: it has no `getByText('Delete')` target — query it via `getByRole('button', { name: 'Delete conversation with <name>' })` (the `aria-label`), as the existing tests in `ConversationRow.test.jsx` do.
 - **`MessagesPage`'s `setActiveId` call is deliberately nested inside the `setConversations` updater** (in the `location.state`-driven open/create effect) — looks like it could be pulled out, but don't: `src/main.jsx` wraps the app in `<StrictMode>`, which double-invokes effects in dev, and only reading the just-created conversation back out of `prev` (the updater's own argument) lets the second invocation take the "already exists" branch instead of creating a duplicate thread. Pulling `setActiveId` out and computing `existing` from the `conversations` state variable directly would reintroduce a duplicate-conversation bug under StrictMode.

@@ -131,3 +131,28 @@ test('Messages nav link points straight to /messages when logged in', () => {
   )
   expect(screen.getByRole('link', { name: 'Messages' })).toHaveAttribute('href', '/messages')
 })
+
+test('My Posts nav link always shows, but points to login (with a redirect-back state) when logged out', () => {
+  useAuth.mockReturnValue({ user: null, signOut: vi.fn() })
+  render(
+    <MemoryRouter>
+      <Layout>
+        <p>page content</p>
+      </Layout>
+    </MemoryRouter>
+  )
+  const myPostsLink = screen.getByRole('link', { name: 'My Posts' })
+  expect(myPostsLink).toHaveAttribute('href', '/login')
+})
+
+test('My Posts nav link points straight to /my-posts when logged in', () => {
+  useAuth.mockReturnValue({ user: { id: 'user-1' }, signOut: vi.fn() })
+  render(
+    <MemoryRouter>
+      <Layout>
+        <p>page content</p>
+      </Layout>
+    </MemoryRouter>
+  )
+  expect(screen.getByRole('link', { name: 'My Posts' })).toHaveAttribute('href', '/my-posts')
+})

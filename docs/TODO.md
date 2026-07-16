@@ -2,12 +2,6 @@
 
 Cross-cutting backlog items that came up during feature work but were explicitly deferred rather than built. Each item should say which feature/discussion it came from and why it was deferred, so it doesn't need to be re-litigated from scratch later.
 
-## My Posts dashboard
-
-A page listing the current user's own posts (missing/found, active/resolved), so they don't have to find their own post via browse or a direct link. Would be a natural home for a per-post match-count badge once `post-matching.md` ships.
-
-**From:** `post-matching.md` design discussion (2026-07-15) — deferred to keep the first pass of match suggestions scoped to `PostDetailPage` only, no new page.
-
 ## Backfill `photo_embedding` for existing posts
 
 Posts created before the `post-matching.md` feature ships (including everything from `scripts/seed-test-posts.mjs`) will have `photo_embedding: null` and only participate in match scoring on fields (location/date), not visual similarity, until edited/resaved.
