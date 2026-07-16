@@ -1,10 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { useScrollRestoration } from '../../lib/useScrollRestoration.js'
 import './theme.css'
 
 export default function Layout({ children }) {
   const { user, signOut } = useAuth()
   const { pathname } = useLocation()
+  useScrollRestoration()
 
   function navLinkClass(path) {
     return `app-nav-link${pathname === path ? ' active' : ''}`

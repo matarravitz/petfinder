@@ -54,7 +54,15 @@ export default function BrowseFeedPage() {
     if (species) params.set('species', species)
     if (radiusKm !== 50) params.set('radius', String(radiusKm))
     if (showAll) params.set('showAll', 'true')
-    setSearchParams(params, { replace: true })
+    // Skip the replace entirely when nothing actually changed (e.g. right on
+    // mount, when this state was itself just read from these same params) —
+    // react-router mints a brand new location.key on every replace() call
+    // regardless of whether the URL content changed, and an unnecessary key
+    // churn here breaks scroll-restoration's ability to look up this page's
+    // saved scroll position by key (see useScrollRestoration.js).
+    if (params.toString() !== searchParams.toString()) {
+      setSearchParams(params, { replace: true })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, species, radiusKm, showAll])
 
