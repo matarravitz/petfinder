@@ -585,6 +585,7 @@ body {
   border-radius: var(--radius);
   padding: var(--space-md);
   margin: var(--space-md) 0;
+  text-align: center;
 }
 
 .status-update-question {
