@@ -89,10 +89,17 @@ test('renewPost updates renewed_at to reset the expiry window', async () => {
   await expect(renewPost(supabase, 'p1')).resolves.toBeUndefined()
 })
 
-test('bumpPost updates bumped_at to move the post to the top', async () => {
-  const postsQuery = createFakeQuery({ data: null, error: null })
-  const supabase = createFakeSupabase({ posts: postsQuery })
+test('bumpPost calls the bump_post RPC with the post id', async () => {
+  const rpcFn = vi.fn(() => Promise.resolve({ error: null }))
+  const supabase = createFakeSupabase({ rpc: rpcFn })
   await expect(bumpPost(supabase, 'p1')).resolves.toBeUndefined()
+  expect(rpcFn).toHaveBeenCalledWith('bump_post', { post_id: 'p1' })
+})
+
+test('bumpPost throws when the RPC returns an error', async () => {
+  const rpcFn = vi.fn(() => Promise.resolve({ error: new Error('cooldown active') }))
+  const supabase = createFakeSupabase({ rpc: rpcFn })
+  await expect(bumpPost(supabase, 'p1')).rejects.toThrow('cooldown active')
 })
 
 test('listCandidatePostsForMatching returns candidate posts for the opposite type/species', async () => {

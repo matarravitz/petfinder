@@ -20,5 +20,6 @@ export function createFakeSupabase(routes) {
       from: (bucket) =>
         routes.storage?.[bucket] ?? { upload: () => Promise.resolve({ error: null }) },
     },
+    rpc: routes.rpc ?? (() => Promise.resolve({ error: null })),
   }
 }

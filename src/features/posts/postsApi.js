@@ -89,10 +89,15 @@ export async function renewPost(supabase, postId) {
 }
 
 // Moves a post to the top of Browse's default sort (see listPosts) by
-// resetting bumped_at to now — rate-limited client-side to once per
-// BUMP_COOLDOWN_HOURS (see postBump.js).
+// resetting bumped_at to now. Calls the bump_post() Postgres function
+// (see supabase/migrations/0009_bump_cooldown_function.sql) rather than a
+// plain update — the function enforces both ownership and the
+// BUMP_COOLDOWN_HOURS cooldown (see postBump.js) server-side, so this can't
+// be bypassed by calling the API directly. The client-side canBump() check
+// still runs first (in MyPostsDashboard.jsx) purely for instant UI feedback
+// (disabling the button) — this server-side check is the actual guarantee.
 export async function bumpPost(supabase, postId) {
-  const { error } = await supabase.from('posts').update({ bumped_at: new Date().toISOString() }).eq('id', postId)
+  const { error } = await supabase.rpc('bump_post', { post_id: postId })
   if (error) throw error
 }
 
