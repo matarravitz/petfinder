@@ -14,11 +14,13 @@ If the number of active posts ever grows large enough that the fields-first pref
 
 **From:** `post-matching.md` (2026-07-15). Not needed at current/expected scale — noted so it isn't reinvented under pressure later.
 
-## Real backend job scheduler (for genuinely automatic post expiry)
+## Make expired-post deletion truly automatic once this app has a backend
 
 Post expiry/auto-removal (`postExpiry.js`, `MyPostsDashboard.jsx`) is currently lazy, not truly automatic: an expired active post is hidden from Browse immediately (computed client-side), but the row is only actually deleted the next time the *owner's own* dashboard happens to load — this app has no backend scheduler at all (no cron, no Edge Functions), so nothing runs unless a browser is open on the right page. If a post's owner never revisits the app, its row lingers (invisible, but not deleted) indefinitely.
 
-**From:** post-lifecycle feature discussion (2026-07-16) — explicitly chosen over adding a Supabase Edge Function + `pg_cron` job, which would be a bigger investment (first real backend component in this project) and wasn't asked for. Revisit if genuinely-unattended cleanup ever matters (e.g. before this app has a production deployment with real storage/DB costs).
+**Do this:** once this app has any real backend component, add a Supabase Edge Function that runs `deletePost`-equivalent logic (delete active posts where `renewed_at + 60 days < now()`) on a `pg_cron` schedule (e.g. daily) — independent of anyone visiting the site. At that point the client-side lazy sweep in `MyPostsDashboard.jsx` can stay as a fast-path (no harm in both existing), but the cron job becomes the actual guarantee.
+
+**From:** post-lifecycle feature discussion (2026-07-16) — explicitly chosen as the lazy/client-side approach for the first pass, since real backend infrastructure would be the first of its kind in this project and wasn't asked for at the time. Revisit once this app gets a backend for any other reason, or before a production deployment with real storage/DB costs makes lingering undeleted rows matter.
 
 ## Real notification system
 
