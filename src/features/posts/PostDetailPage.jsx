@@ -185,20 +185,6 @@ export default function PostDetailPage() {
         </button>
       )}
 
-      {isOwner && post.status !== 'resolved' && (
-        <div className="status-update-prompt">
-          <p className="status-update-question">Is this post still active?</p>
-          <div className="status-update-actions">
-            <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
-              {isMissing ? 'Mark as found' : 'Mark as reunited'}
-            </button>
-            <button type="button" className="status-update-remove-button" onClick={handleDelete}>
-              Remove post
-            </button>
-          </div>
-        </div>
-      )}
-
       {isOwner && post.status === 'active' && (
         <div className="possible-matches">
           <h3 className="possible-matches-title">Possible Matches</h3>
@@ -224,6 +210,20 @@ export default function PostDetailPage() {
           >
             {matchesLoading ? 'Checking…' : 'Check for new matches'}
           </button>
+        </div>
+      )}
+
+      {isOwner && post.status !== 'resolved' && (
+        <div className="status-update-prompt">
+          <p className="status-update-question">Is this post still active?</p>
+          <div className="status-update-actions">
+            <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
+              {isMissing ? 'Mark as found' : 'Mark as reunited'}
+            </button>
+            <button type="button" className="status-update-remove-button" onClick={handleDelete}>
+              Remove post
+            </button>
+          </div>
         </div>
       )}
     </div>
