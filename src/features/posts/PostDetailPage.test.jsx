@@ -17,7 +17,6 @@ vi.mock('./postsApi.js', () => ({
     Promise.resolve({ id: 'p1', owner_id: 'owner-1', type: 'missing', species: 'cat', location_text: 'Tel Aviv', post_photos: [] })
   ),
   resolvePost: vi.fn(() => Promise.resolve()),
-  deletePost: vi.fn(() => Promise.resolve()),
   listCandidatePostsForMatching: vi.fn(() => Promise.resolve([])),
 }))
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
@@ -76,31 +75,12 @@ test('non-owner does not see a status-update prompt', async () => {
   expect(screen.queryByText('Is this post still active?')).not.toBeInTheDocument()
 })
 
-test('owner can remove a post instead of resolving it, after confirming', async () => {
+test('there is no remove/delete option on the post detail page (moved to My Posts dashboard)', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
-  vi.spyOn(window, 'confirm').mockReturnValue(true)
   renderAtPost('p1')
 
   await waitFor(() => screen.getByText(/Missing: cat/))
-  await userEvent.click(screen.getByRole('button', { name: 'Remove post' }))
-
-  expect(window.confirm).toHaveBeenCalledWith('Remove this post? This cannot be undone.')
-  expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'p1')
-  expect(mockNavigate).toHaveBeenCalledWith('/browse')
-  window.confirm.mockRestore()
-})
-
-test('declining the remove confirmation leaves the post untouched', async () => {
-  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
-  vi.spyOn(window, 'confirm').mockReturnValue(false)
-  renderAtPost('p1')
-
-  await waitFor(() => screen.getByText(/Missing: cat/))
-  await userEvent.click(screen.getByRole('button', { name: 'Remove post' }))
-
-  expect(postsApi.deletePost).not.toHaveBeenCalled()
-  expect(mockNavigate).not.toHaveBeenCalled()
-  window.confirm.mockRestore()
+  expect(screen.queryByRole('button', { name: 'Remove post' })).not.toBeInTheDocument()
 })
 
 test('the status-update prompt is not shown once a post is already resolved', async () => {

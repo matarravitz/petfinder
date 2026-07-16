@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
-import { getPost, resolvePost, deletePost, listCandidatePostsForMatching } from './postsApi.js'
+import { getPost, resolvePost, listCandidatePostsForMatching } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { buildPhotoUrl } from '../../lib/photoUrl.js'
 import PawPrintIcon from '../layout/PawPrintIcon.jsx'
@@ -78,13 +78,6 @@ export default function PostDetailPage() {
   async function handleResolve() {
     await resolvePost(supabase, post.id)
     setPost((prev) => ({ ...prev, status: 'resolved' }))
-  }
-
-  async function handleDelete() {
-    const confirmed = window.confirm('Remove this post? This cannot be undone.')
-    if (!confirmed) return
-    await deletePost(supabase, post.id)
-    navigate('/browse')
   }
 
   function handleContact() {
@@ -216,14 +209,9 @@ export default function PostDetailPage() {
       {isOwner && post.status !== 'resolved' && (
         <div className="status-update-prompt">
           <p className="status-update-question">Is this post still active?</p>
-          <div className="status-update-actions">
-            <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
-              {isMissing ? 'Mark as found' : 'Mark as reunited'}
-            </button>
-            <button type="button" className="status-update-remove-button" onClick={handleDelete}>
-              Remove post
-            </button>
-          </div>
+          <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
+            {isMissing ? 'Mark as found' : 'Mark as reunited'}
+          </button>
         </div>
       )}
     </div>

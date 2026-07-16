@@ -45,3 +45,22 @@ test('filters by radius from the user location and sorts by distance ascending',
   expect(result.map((p) => p.id)).toEqual(['near', 'dog'])
   expect(result[0].distanceKm).toBeCloseTo(0, 3)
 })
+
+test('hides an active post that has passed its expiry date, even though the row still exists', () => {
+  const now = new Date('2026-08-01T00:00:00.000Z')
+  const expiringPosts = [
+    { id: 'still-active', type: 'missing', species: 'cat', status: 'active', renewed_at: '2026-07-15T00:00:00.000Z' },
+    { id: 'expired', type: 'missing', species: 'cat', status: 'active', renewed_at: '2026-01-01T00:00:00.000Z' },
+  ]
+  const result = filterAndSortPosts(expiringPosts, {}, now)
+  expect(result.map((p) => p.id)).toEqual(['still-active'])
+})
+
+test('does not hide a resolved post even if its renewed_at is long past', () => {
+  const now = new Date('2026-08-01T00:00:00.000Z')
+  const expiringPosts = [
+    { id: 'old-resolved', type: 'missing', species: 'cat', status: 'resolved', renewed_at: '2026-01-01T00:00:00.000Z' },
+  ]
+  const result = filterAndSortPosts(expiringPosts, { status: 'resolved' }, now)
+  expect(result.map((p) => p.id)).toEqual(['old-resolved'])
+})

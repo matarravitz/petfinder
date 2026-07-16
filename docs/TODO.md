@@ -14,6 +14,12 @@ If the number of active posts ever grows large enough that the fields-first pref
 
 **From:** `post-matching.md` (2026-07-15). Not needed at current/expected scale — noted so it isn't reinvented under pressure later.
 
+## Real backend job scheduler (for genuinely automatic post expiry)
+
+Post expiry/auto-removal (`postExpiry.js`, `MyPostsDashboard.jsx`) is currently lazy, not truly automatic: an expired active post is hidden from Browse immediately (computed client-side), but the row is only actually deleted the next time the *owner's own* dashboard happens to load — this app has no backend scheduler at all (no cron, no Edge Functions), so nothing runs unless a browser is open on the right page. If a post's owner never revisits the app, its row lingers (invisible, but not deleted) indefinitely.
+
+**From:** post-lifecycle feature discussion (2026-07-16) — explicitly chosen over adding a Supabase Edge Function + `pg_cron` job, which would be a bigger investment (first real backend component in this project) and wasn't asked for. Revisit if genuinely-unattended cleanup ever matters (e.g. before this app has a production deployment with real storage/DB costs).
+
 ## Real notification system
 
 No push/email notifications exist anywhere in the app today. `messaging.md`'s chat is mock-data/in-memory only, and `post-matching.md`'s match suggestions are pull-based (only shown when the owner views their own post) specifically because this doesn't exist yet.

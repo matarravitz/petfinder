@@ -630,6 +630,80 @@ body {
   cursor: pointer;
 }
 
+/* ---------- My Posts: expiry notifications ---------- */
+
+.expiry-notifications {
+  margin-bottom: var(--space-lg);
+}
+
+.expiry-notifications-title {
+  font-family: var(--font-family-display);
+  font-weight: 400;
+  font-size: 1.15rem;
+  margin: 0 0 var(--space-md);
+}
+
+.expiry-notification {
+  background: var(--color-accent-tint);
+  border-radius: var(--radius);
+  padding: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.expiry-notification-text {
+  margin: 0 0 var(--space-md);
+}
+
+/* ---------- My Posts: per-card bump/remove ---------- */
+
+.my-post-card {
+  position: relative;
+}
+
+.my-post-card .post-card {
+  margin-bottom: 0;
+  height: 100%;
+}
+
+.my-post-bump-button {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-accent);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(42, 46, 43, 0.25);
+}
+
+.my-post-bump-button:disabled {
+  color: var(--color-muted);
+  cursor: not-allowed;
+}
+
+.my-post-remove-button {
+  display: block;
+  width: 100%;
+  margin-top: var(--space-xs);
+  font-family: var(--font-family-body);
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  padding: var(--space-xs) var(--space-md);
+  cursor: pointer;
+}
+
 .post-detail-photos {
   display: flex;
   flex-wrap: wrap;

@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
-import { listPostsByOwner } from './postsApi.js'
+import { listPostsByOwner, deletePost, renewPost, bumpPost } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
+import { isExpired, isExpiringSoon, daysUntilExpiry } from './postExpiry.js'
+import { canBump, hoursUntilNextBump } from './postBump.js'
 import PostCard from './PostCard.jsx'
+import BellIcon from './BellIcon.jsx'
+
+function postLabel(post) {
+  return post.pet_name || (post.type === 'missing' ? 'This missing pet' : 'This found pet')
+}
 
 export default function MyPostsDashboard() {
   const { user, loading: authLoading } = useAuth()
@@ -21,16 +28,52 @@ export default function MyPostsDashboard() {
       return
     }
     listPostsByOwner(supabase, user.id)
-      .then(setPosts)
+      .then(async (fetchedPosts) => {
+        // Lazy expiry sweep: this app has no backend scheduler (see
+        // postExpiry.js), so an expired active post only actually gets
+        // deleted the next time the owner's own dashboard loads. Browse
+        // already hides expired posts immediately regardless (see
+        // filterPosts.js) — this is what makes that eventually consistent.
+        const now = new Date()
+        const expired = fetchedPosts.filter((post) => post.status === 'active' && isExpired(post, now))
+        if (expired.length > 0) {
+          await Promise.all(expired.map((post) => deletePost(supabase, post.id)))
+        }
+        const expiredIds = new Set(expired.map((post) => post.id))
+        setPosts(fetchedPosts.filter((post) => !expiredIds.has(post.id)))
+      })
       .catch((err) => setError(err.message))
   }, [user, authLoading, navigate])
+
+  async function handleRenew(postId) {
+    await renewPost(supabase, postId)
+    setPosts((prev) =>
+      prev.map((post) => (post.id === postId ? { ...post, renewed_at: new Date().toISOString() } : post))
+    )
+  }
+
+  async function handleRemove(postId) {
+    const confirmed = window.confirm('Remove this post? This cannot be undone.')
+    if (!confirmed) return
+    await deletePost(supabase, postId)
+    setPosts((prev) => prev.filter((post) => post.id !== postId))
+  }
+
+  async function handleBump(postId) {
+    await bumpPost(supabase, postId)
+    setPosts((prev) =>
+      prev.map((post) => (post.id === postId ? { ...post, bumped_at: new Date().toISOString() } : post))
+    )
+  }
 
   if (authLoading || !user) return <p>Loading...</p>
   if (error) return <p role="alert">{error}</p>
   if (!posts) return <p>Loading...</p>
 
+  const now = new Date()
   const activePosts = posts.filter((post) => post.status === 'active')
   const resolvedPosts = posts.filter((post) => post.status === 'resolved')
+  const expiringSoonPosts = activePosts.filter((post) => isExpiringSoon(post, now))
 
   return (
     <div>
@@ -43,13 +86,68 @@ export default function MyPostsDashboard() {
         </p>
       )}
 
+      {expiringSoonPosts.length > 0 && (
+        <div className="expiry-notifications">
+          <h3 className="expiry-notifications-title">Posts expiring soon</h3>
+          {expiringSoonPosts.map((post) => {
+            const days = daysUntilExpiry(post, now)
+            return (
+              <div key={post.id} className="expiry-notification">
+                <p className="expiry-notification-text">
+                  {postLabel(post)} will be automatically removed in {days} day{days === 1 ? '' : 's'} unless you
+                  let us know it&apos;s still needed.
+                </p>
+                <div className="status-update-actions">
+                  <button type="button" className="status-update-confirm-button" onClick={() => handleRenew(post.id)}>
+                    Still looking — keep it up
+                  </button>
+                  <button
+                    type="button"
+                    className="status-update-remove-button"
+                    onClick={() => handleRemove(post.id)}
+                  >
+                    Remove post
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {activePosts.length > 0 && (
         <div className="my-posts-section">
           <h3 className="my-posts-section-title">Active</h3>
           <div className="post-grid">
-            {activePosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            {activePosts.map((post) => {
+              const bumpAllowed = canBump(post, now)
+              return (
+                <div key={post.id} className="my-post-card">
+                  <button
+                    type="button"
+                    className="my-post-bump-button"
+                    onClick={() => handleBump(post.id)}
+                    disabled={!bumpAllowed}
+                    aria-label={
+                      bumpAllowed
+                        ? 'Bump this post to the top of search results'
+                        : `You can bump this post again in ${hoursUntilNextBump(post, now)} hours`
+                    }
+                    title={
+                      bumpAllowed
+                        ? 'Bump this post to the top of search results'
+                        : `You can bump this post again in ${hoursUntilNextBump(post, now)} hours`
+                    }
+                  >
+                    <BellIcon />
+                  </button>
+                  <PostCard post={post} />
+                  <button type="button" className="my-post-remove-button" onClick={() => handleRemove(post.id)}>
+                    Remove
+                  </button>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

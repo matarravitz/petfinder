@@ -1,6 +1,10 @@
 import { haversineDistanceKm } from '../../lib/distance.js'
+import { isExpired } from './postExpiry.js'
 
-export function filterAndSortPosts(posts, filters) {
+// `now` defaults to a fresh Date() on every call (not a shared module-level
+// value), so it can't go stale across a long browsing session — pass an
+// explicit value in tests for deterministic assertions.
+export function filterAndSortPosts(posts, filters, now = new Date()) {
   const {
     userLocation,
     radiusKm,
@@ -18,6 +22,11 @@ export function filterAndSortPosts(posts, filters) {
 
   return posts
     .filter((post) => (status ? post.status === status : true))
+    // Active posts past their expiry are hidden from Browse immediately,
+    // even before the owner's own dashboard has actually deleted the row
+    // (see MyPostsDashboard.jsx / postExpiry.js) — never surfaced as a
+    // stale listing while that lazy cleanup hasn't run yet.
+    .filter((post) => !(post.status === 'active' && isExpired(post, now)))
     .filter((post) => (type && type !== 'all' ? post.type === type : true))
     .filter((post) => (species ? post.species === species : true))
     .filter((post) => (breed ? post.breed?.toLowerCase().includes(breed.toLowerCase()) : true))

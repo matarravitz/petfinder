@@ -7,6 +7,8 @@ import {
   listCandidatePostsForMatching,
   deletePost,
   listPostsByOwner,
+  renewPost,
+  bumpPost,
 } from './postsApi.js'
 
 test('listPosts returns the query result data', async () => {
@@ -57,6 +59,18 @@ test('listPostsByOwner returns posts belonging to the given owner', async () => 
   const supabase = createFakeSupabase({ posts: postsQuery })
   const result = await listPostsByOwner(supabase, 'owner-1')
   expect(result).toEqual([{ id: 'p3' }])
+})
+
+test('renewPost updates renewed_at to reset the expiry window', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const supabase = createFakeSupabase({ posts: postsQuery })
+  await expect(renewPost(supabase, 'p1')).resolves.toBeUndefined()
+})
+
+test('bumpPost updates bumped_at to move the post to the top', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const supabase = createFakeSupabase({ posts: postsQuery })
+  await expect(bumpPost(supabase, 'p1')).resolves.toBeUndefined()
 })
 
 test('listCandidatePostsForMatching returns candidate posts for the opposite type/species', async () => {

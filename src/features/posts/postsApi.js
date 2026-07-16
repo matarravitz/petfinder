@@ -1,8 +1,12 @@
+// Ordered by bumped_at (not created_at) so a "bump to top" (see postBump.js)
+// actually moves a post to the front — bumped_at defaults to created_at at
+// insert time, so this is equivalent to created_at ordering until a post is
+// ever bumped.
 export async function listPosts(supabase) {
   const { data, error } = await supabase
     .from('posts')
     .select('*, post_photos(*), profiles(display_name)')
-    .order('created_at', { ascending: false })
+    .order('bumped_at', { ascending: false })
   if (error) throw error
   return data
 }
@@ -57,9 +61,24 @@ export async function listPostsByOwner(supabase, ownerId) {
     .from('posts')
     .select('*, post_photos(*), profiles(display_name)')
     .eq('owner_id', ownerId)
-    .order('created_at', { ascending: false })
+    .order('bumped_at', { ascending: false })
   if (error) throw error
   return data
+}
+
+// Resets the 2-month expiry window (see postExpiry.js) to start fresh from
+// now — the response to an expiring-soon notification on MyPostsDashboard.
+export async function renewPost(supabase, postId) {
+  const { error } = await supabase.from('posts').update({ renewed_at: new Date().toISOString() }).eq('id', postId)
+  if (error) throw error
+}
+
+// Moves a post to the top of Browse's default sort (see listPosts) by
+// resetting bumped_at to now — rate-limited client-side to once per
+// BUMP_COOLDOWN_HOURS (see postBump.js).
+export async function bumpPost(supabase, postId) {
+  const { error } = await supabase.from('posts').update({ bumped_at: new Date().toISOString() }).eq('id', postId)
+  if (error) throw error
 }
 
 export async function listCandidatePostsForMatching(supabase, { type, species, excludePostId }) {

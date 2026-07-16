@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { vi } from 'vitest'
 import MyPostsDashboard from './MyPostsDashboard.jsx'
@@ -13,6 +14,9 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('./postsApi.js', () => ({
   listPostsByOwner: vi.fn(() => Promise.resolve([])),
+  deletePost: vi.fn(() => Promise.resolve()),
+  renewPost: vi.fn(() => Promise.resolve()),
+  bumpPost: vi.fn(() => Promise.resolve()),
 }))
 vi.mock('../auth/AuthContext.jsx', () => ({ useAuth: vi.fn() }))
 
@@ -28,10 +32,21 @@ function renderDashboard() {
   )
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+const MS_PER_HOUR = 60 * 60 * 1000
+
+function daysAgo(days) {
+  return new Date(Date.now() - days * MS_PER_DAY).toISOString()
+}
+
+function hoursAgo(hours) {
+  return new Date(Date.now() - hours * MS_PER_HOUR).toISOString()
+}
+
 test('splits the owner\'s posts into Active and Resolved sections', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
   postsApi.listPostsByOwner.mockResolvedValueOnce([
-    { id: 'p1', type: 'missing', species: 'cat', status: 'active', post_photos: [] },
+    { id: 'p1', type: 'missing', species: 'cat', status: 'active', post_photos: [], renewed_at: daysAgo(1), bumped_at: daysAgo(1) },
     { id: 'p2', type: 'found', species: 'dog', status: 'resolved', post_photos: [] },
   ])
   renderDashboard()
@@ -46,7 +61,7 @@ test('splits the owner\'s posts into Active and Resolved sections', async () => 
 test('omits a section entirely when the owner has no posts in that status', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
   postsApi.listPostsByOwner.mockResolvedValueOnce([
-    { id: 'p1', type: 'missing', species: 'cat', status: 'active', post_photos: [] },
+    { id: 'p1', type: 'missing', species: 'cat', status: 'active', post_photos: [], renewed_at: daysAgo(1), bumped_at: daysAgo(1) },
   ])
   renderDashboard()
 
@@ -87,4 +102,207 @@ test('shows an error message when the posts fail to load', async () => {
   renderDashboard()
 
   expect(await screen.findByRole('alert')).toHaveTextContent('Network error')
+})
+
+test('auto-deletes and hides an active post that has already passed its expiry date', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'expired',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(61),
+      bumped_at: daysAgo(61),
+    },
+  ])
+  renderDashboard()
+
+  await waitFor(() => expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'expired'))
+  expect(screen.queryByText(/Missing: cat/)).not.toBeInTheDocument()
+})
+
+test('does not auto-delete a resolved post even if it was renewed long ago', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'old-resolved',
+      type: 'missing',
+      species: 'cat',
+      status: 'resolved',
+      post_photos: [],
+      renewed_at: daysAgo(200),
+      bumped_at: daysAgo(200),
+    },
+  ])
+  renderDashboard()
+
+  expect(await screen.findByText(/Missing: cat/)).toBeInTheDocument()
+  expect(postsApi.deletePost).not.toHaveBeenCalled()
+})
+
+test('shows an expiring-soon notification, and renewing it clears the notification', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'soon',
+      type: 'missing',
+      species: 'cat',
+      pet_name: 'Milo',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(56),
+      bumped_at: daysAgo(56),
+    },
+  ])
+  renderDashboard()
+
+  expect(await screen.findByText('Posts expiring soon')).toBeInTheDocument()
+  expect(screen.getByText(/Milo will be automatically removed in 4 days/)).toBeInTheDocument()
+
+  await userEvent.click(screen.getByRole('button', { name: 'Still looking — keep it up' }))
+
+  expect(postsApi.renewPost).toHaveBeenCalledWith(expect.anything(), 'soon')
+  await waitFor(() => expect(screen.queryByText('Posts expiring soon')).not.toBeInTheDocument())
+})
+
+test('removing a post from the expiring-soon notification deletes it, after confirming', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'soon',
+      type: 'missing',
+      species: 'cat',
+      pet_name: 'Milo',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(56),
+      bumped_at: daysAgo(56),
+    },
+  ])
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderDashboard()
+
+  await screen.findByText('Posts expiring soon')
+  await userEvent.click(screen.getByRole('button', { name: 'Remove post' }))
+
+  expect(window.confirm).toHaveBeenCalledWith('Remove this post? This cannot be undone.')
+  expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'soon')
+  window.confirm.mockRestore()
+})
+
+test('a post well within its window shows no expiring-soon notification', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'fresh',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(1),
+    },
+  ])
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  expect(screen.queryByText('Posts expiring soon')).not.toBeInTheDocument()
+})
+
+test('each active post has its own Remove option on the dashboard card', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(1),
+    },
+  ])
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  await userEvent.click(screen.getByRole('button', { name: 'Remove' }))
+
+  expect(window.confirm).toHaveBeenCalledWith('Remove this post? This cannot be undone.')
+  expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'p1')
+  await waitFor(() => expect(screen.queryByText(/Missing: cat/)).not.toBeInTheDocument())
+  window.confirm.mockRestore()
+})
+
+test('declining the remove confirmation on a dashboard card leaves the post in place', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(1),
+    },
+  ])
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  await userEvent.click(screen.getByRole('button', { name: 'Remove' }))
+
+  expect(postsApi.deletePost).not.toHaveBeenCalled()
+  expect(screen.getByText(/Missing: cat/)).toBeInTheDocument()
+  window.confirm.mockRestore()
+})
+
+test('bumping an eligible post calls bumpPost and then disables further bumping until the cooldown passes', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(2),
+    },
+  ])
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  const bumpButton = screen.getByRole('button', { name: /bump this post to the top/i })
+  expect(bumpButton).not.toBeDisabled()
+
+  await userEvent.click(bumpButton)
+
+  expect(postsApi.bumpPost).toHaveBeenCalledWith(expect.anything(), 'p1')
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /you can bump this post again/i })).toBeDisabled()
+  )
+})
+
+test('bump button starts disabled when the post was already bumped within the last 24h', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: hoursAgo(1),
+    },
+  ])
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  expect(screen.getByRole('button', { name: /you can bump this post again/i })).toBeDisabled()
+  expect(postsApi.bumpPost).not.toHaveBeenCalled()
 })
