@@ -186,23 +186,17 @@ export default function PostDetailPage() {
       )}
 
       {isOwner && post.status !== 'resolved' && (
-        <div className="resolve-prompt">
-          <p className="resolve-prompt-question">
-            {isMissing ? `Did you find ${post.pet_name || 'your pet'}?` : 'Reunited them with their owner?'}
-          </p>
-          <p className="resolve-prompt-subtext">
-            {isMissing ? 'Let us know so we can stop searching.' : 'Let us know so we can close this post.'}
-          </p>
-          <button type="button" className="resolve-prompt-button" onClick={handleResolve}>
-            {isMissing ? "Yes, we're reunited! 🎉" : "Yes, they're home! 🎉"}
-          </button>
+        <div className="status-update-prompt">
+          <p className="status-update-question">Is this post still active?</p>
+          <div className="status-update-actions">
+            <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
+              {isMissing ? 'Mark as found' : 'Mark as reunited'}
+            </button>
+            <button type="button" className="status-update-remove-button" onClick={handleDelete}>
+              Remove post
+            </button>
+          </div>
         </div>
-      )}
-
-      {isOwner && post.status !== 'resolved' && (
-        <button type="button" className="resolve-prompt-remove-link" onClick={handleDelete}>
-          Not the case? Remove this post instead
-        </button>
       )}
 
       {isOwner && post.status === 'active' && (
