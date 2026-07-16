@@ -105,6 +105,73 @@ describe('findMatches', () => {
   })
 })
 
+describe('fields-based scoring when neither post has a photo_embedding', () => {
+  test('reproduces the real-world bug: two different-looking dogs posted nearby no longer score as a match', () => {
+    // Real seeded data: Rex (missing, Labrador mix, brown) vs a found dog
+    // (Terrier mix, white and brown) ~1.1km apart, 3 days apart. Before the
+    // fields-score fix, this scored ~0.91 ("Strong match") purely from
+    // location+date, completely ignoring that the breed and color don't
+    // match at all — computed score here is ~0.4548, correctly below
+    // MATCH_SCORE_THRESHOLD.
+    const rex = {
+      id: 'rex',
+      breed: 'Labrador mix',
+      color: 'brown',
+      location_lat: 32.0668,
+      location_lng: 34.7647,
+      date_lost_or_found: '2026-06-28',
+      photo_embedding: null,
+    }
+    const foundDog = {
+      id: 'found-dog',
+      breed: 'Terrier mix',
+      color: 'white and brown',
+      location_lat: 32.062,
+      location_lng: 34.775,
+      date_lost_or_found: '2026-07-01',
+      photo_embedding: null,
+    }
+
+    expect(findMatches(rex, [foundDog])).toEqual([])
+  })
+
+  test('a candidate matching on breed and color scores highly (and the comparison is case-insensitive)', () => {
+    const post = { ...basePost, photo_embedding: null, breed: 'Labrador Mix', color: 'brown' }
+    const candidate = buildCandidate({ photo_embedding: null, breed: 'labrador mix', color: 'Brown' })
+
+    const result = findMatches(post, [candidate])
+
+    expect(result).toHaveLength(1)
+    expect(result[0].score).toBeCloseTo(1, 5)
+    expect(matchLabelForScore(result[0].score)).toBe('Strong match')
+  })
+
+  test('a candidate mismatching on breed and color scores lower than one with no field data at all', () => {
+    const post = { ...basePost, photo_embedding: null, breed: 'Labrador mix', color: 'brown' }
+    const withMismatch = buildCandidate({ photo_embedding: null, breed: 'Terrier mix', color: 'white' })
+    const withNoFields = buildCandidate({ photo_embedding: null })
+
+    const [mismatchResult] = findMatches(post, [withMismatch])
+    const [noFieldsResult] = findMatches(post, [withNoFields])
+
+    expect(mismatchResult.score).toBeLessThan(noFieldsResult.score)
+  })
+
+  test('does not treat a field as a mismatch when only one side has it set', () => {
+    // post has no breed/color at all -> fieldsScore has nothing to compare
+    // for either -> falls back to the pre-existing location+date-only
+    // formula, same as before this fix, rather than treating the missing
+    // side as a mismatch.
+    const post = { ...basePost, photo_embedding: null }
+    const candidate = buildCandidate({ photo_embedding: null, breed: 'Terrier mix', color: 'white' })
+
+    const result = findMatches(post, [candidate])
+
+    expect(result).toHaveLength(1)
+    expect(result[0].score).toBeCloseTo(1, 5)
+  })
+})
+
 describe('matchLabelForScore', () => {
   test('labels 0.75 and above as a strong match', () => {
     expect(matchLabelForScore(0.75)).toBe('Strong match')
