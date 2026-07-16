@@ -20,4 +20,10 @@ as $$
     and bumped_at <= now() - interval '24 hours';
 $$;
 
+-- 0003_grants.sql's `alter default privileges ... grant all on routines to
+-- anon, authenticated, service_role` fires on every new function, including
+-- this one — so the grant below alone does NOT actually restrict execution
+-- to authenticated; PUBLIC and anon both retain execute by default unless
+-- explicitly revoked. Revoke first, then grant only to authenticated.
+revoke execute on function bump_post(uuid) from public, anon;
 grant execute on function bump_post(uuid) to authenticated;
