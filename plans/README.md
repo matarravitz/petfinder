@@ -17,10 +17,10 @@ and update your row when done.
 | 003 | Add storage delete policy + clean up files on post deletion | P1 | S-M | security | — | DONE |
 | 004 | Enforce bump cooldown server-side | P1 | S | security | — | DONE |
 | 005 | Fix TF.js model loader permanently caching a failed load | P1 | S | bug | — | DONE |
-| 006 | Batch expired-post deletion into a single request | P1 | S | perf | — | TODO |
-| 007 | Add error handling to post renew/remove/bump/resolve actions | P2 | S-M | bug | — | TODO |
-| 008 | Stop over-fetching photo_embedding on list queries | P2 | S | perf | — | TODO |
-| 009 | Add double-submit guard to CreatePostForm | P2 | S | bug | — | TODO |
+| 006 | Batch expired-post deletion into a single request | P1 | S | perf | — | DONE |
+| 007 | Add error handling to post renew/remove/bump/resolve actions | P2 | S-M | bug | — | DONE |
+| 008 | Stop over-fetching photo_embedding on list queries | P2 | S | perf | — | DONE |
+| 009 | Add double-submit guard to CreatePostForm | P2 | S | bug | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale — finding fixed independently or approach
