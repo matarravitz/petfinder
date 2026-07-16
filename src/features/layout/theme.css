@@ -619,6 +619,17 @@ body {
     grid-template-columns: 1fr 1fr;
     grid-template-areas: none;
   }
+
+  /* Each .field-* class sets a named grid-area (e.g. `grid-area: location`)
+     for the 3-column desktop layout above. Dropping grid-template-areas to
+     none here does NOT make the children fall back to auto-placement —
+     Chromium keeps trying to resolve the now-undefined named line and
+     collapses every item into the same cell instead, stacking all fields
+     on top of each other. Reset to auto so children flow normally into the
+     2-column grid. */
+  .post-detail-field {
+    grid-area: auto;
+  }
 }
 
 .post-detail-field dt {
