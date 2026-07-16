@@ -48,10 +48,32 @@ test('resolvePost updates the post status to resolved', async () => {
   await expect(resolvePost(supabase, 'p1')).resolves.toBeUndefined()
 })
 
-test('deletePost deletes the post by id', async () => {
+test('deletePost removes the post\'s storage files before deleting the post row', async () => {
   const postsQuery = createFakeQuery({ data: null, error: null })
-  const supabase = createFakeSupabase({ posts: postsQuery })
+  const photosQuery = createFakeQuery({ data: [{ storage_path: 'p1/dog.jpg' }], error: null })
+  const removeFn = vi.fn(() => Promise.resolve({ error: null }))
+  const supabase = createFakeSupabase({
+    posts: postsQuery,
+    post_photos: photosQuery,
+    storage: { 'post-photos': { upload: vi.fn(), remove: removeFn } },
+  })
+
   await expect(deletePost(supabase, 'p1')).resolves.toBeUndefined()
+  expect(removeFn).toHaveBeenCalledWith(['p1/dog.jpg'])
+})
+
+test('deletePost skips the storage remove call when the post has no photos', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const photosQuery = createFakeQuery({ data: [], error: null })
+  const removeFn = vi.fn(() => Promise.resolve({ error: null }))
+  const supabase = createFakeSupabase({
+    posts: postsQuery,
+    post_photos: photosQuery,
+    storage: { 'post-photos': { upload: vi.fn(), remove: removeFn } },
+  })
+
+  await expect(deletePost(supabase, 'p1')).resolves.toBeUndefined()
+  expect(removeFn).not.toHaveBeenCalled()
 })
 
 test('listPostsByOwner returns posts belonging to the given owner', async () => {

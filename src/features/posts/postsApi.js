@@ -48,10 +48,25 @@ export async function resolvePost(supabase, postId) {
   if (error) throw error
 }
 
-// post_photos rows cascade-delete with the post (see supabase/migrations/0001_init.sql's
-// `references posts(id) on delete cascade`); this does not remove the underlying files
-// from the post-photos storage bucket.
+// Reads the post's photo storage paths before deleting the post (post_photos
+// rows cascade-delete with the post — see supabase/migrations/0001_init.sql's
+// `references posts(id) on delete cascade` — so they must be read first),
+// then removes both the storage files and the post row. If the storage
+// bucket has never had a photo for this post, storagePaths is empty and
+// storage.remove([]) below is a harmless no-op call.
 export async function deletePost(supabase, postId) {
+  const { data: photos, error: photosError } = await supabase
+    .from('post_photos')
+    .select('storage_path')
+    .eq('post_id', postId)
+  if (photosError) throw photosError
+
+  const storagePaths = (photos || []).map((photo) => photo.storage_path)
+  if (storagePaths.length > 0) {
+    const { error: removeError } = await supabase.storage.from('post-photos').remove(storagePaths)
+    if (removeError) throw removeError
+  }
+
   const { error } = await supabase.from('posts').delete().eq('id', postId)
   if (error) throw error
 }
