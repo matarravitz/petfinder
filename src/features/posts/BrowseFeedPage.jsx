@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
 import { listPosts } from './postsApi.js'
 import { filterAndSortPosts } from './filterPosts.js'
@@ -21,12 +22,17 @@ const SPECIES_OPTIONS = [
 ]
 
 export default function BrowseFeedPage() {
+  // Filters live in the URL (not just component state) so they survive
+  // navigating away to a post and back — React Router unmounts this page
+  // when you visit /post/:id and mounts a fresh instance on return, which
+  // would otherwise reset every filter to its default.
+  const [searchParams, setSearchParams] = useSearchParams()
   const [posts, setPosts] = useState([])
   const [userLocation, setUserLocation] = useState(null)
-  const [type, setType] = useState('all')
-  const [species, setSpecies] = useState('')
-  const [radiusKm, setRadiusKm] = useState(50)
-  const [showAll, setShowAll] = useState(false)
+  const [type, setType] = useState(searchParams.get('type') || 'all')
+  const [species, setSpecies] = useState(searchParams.get('species') || '')
+  const [radiusKm, setRadiusKm] = useState(Number(searchParams.get('radius')) || 50)
+  const [showAll, setShowAll] = useState(searchParams.get('showAll') === 'true')
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -37,6 +43,20 @@ export default function BrowseFeedPage() {
       .then(setUserLocation)
       .catch(() => setUserLocation(null))
   }, [])
+
+  // Keep the URL in sync with the filters (via `replace` so every slider
+  // tick/click doesn't grow browser history) — this is what lets the browser
+  // back button restore the exact filters that were active before navigating
+  // away. Only non-default values are written, keeping the URL clean.
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (type !== 'all') params.set('type', type)
+    if (species) params.set('species', species)
+    if (radiusKm !== 50) params.set('radius', String(radiusKm))
+    if (showAll) params.set('showAll', 'true')
+    setSearchParams(params, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, species, radiusKm, showAll])
 
   const visiblePosts = filterAndSortPosts(posts, {
     type,
