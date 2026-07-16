@@ -345,3 +345,76 @@ test('bump button starts disabled when the post was already bumped within the la
   expect(screen.getByRole('button', { name: /you can bump this post again/i })).toBeDisabled()
   expect(postsApi.bumpPost).not.toHaveBeenCalled()
 })
+
+test('shows an inline error and does not update the post in state when renew fails', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'soon',
+      type: 'missing',
+      species: 'cat',
+      pet_name: 'Milo',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(56),
+      bumped_at: daysAgo(56),
+    },
+  ])
+  postsApi.renewPost.mockRejectedValueOnce(new Error('network error'))
+  renderDashboard()
+
+  await screen.findByText('Posts expiring soon')
+  await userEvent.click(screen.getByRole('button', { name: 'Still looking — keep it up' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('network error')
+  expect(screen.getByText('Posts expiring soon')).toBeInTheDocument()
+})
+
+test('shows an inline error when remove fails, after confirming', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(1),
+    },
+  ])
+  postsApi.deletePost.mockRejectedValueOnce(new Error('network error'))
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  await userEvent.click(screen.getByRole('button', { name: 'Remove' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('network error')
+  expect(screen.getByText(/Missing: cat/)).toBeInTheDocument()
+  window.confirm.mockRestore()
+})
+
+test('shows an inline error when bump fails', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'p1',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(1),
+      bumped_at: daysAgo(2),
+    },
+  ])
+  postsApi.bumpPost.mockRejectedValueOnce(new Error('network error'))
+  renderDashboard()
+
+  await screen.findByText(/Missing: cat/)
+  const bumpButton = screen.getByRole('button', { name: /bump this post to the top/i })
+  await userEvent.click(bumpButton)
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('network error')
+  expect(screen.getByRole('button', { name: /bump this post to the top/i })).not.toBeDisabled()
+})

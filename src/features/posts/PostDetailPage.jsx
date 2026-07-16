@@ -18,6 +18,7 @@ export default function PostDetailPage() {
   const [matchesChecked, setMatchesChecked] = useState(false)
   const [matchesLoading, setMatchesLoading] = useState(false)
   const [matchesError, setMatchesError] = useState(null)
+  const [resolveError, setResolveError] = useState(null)
 
   useEffect(() => {
     // Reset all post- and match-derived state before fetching the new post.
@@ -76,8 +77,13 @@ export default function PostDetailPage() {
   const canContact = user && !isOwner
 
   async function handleResolve() {
-    await resolvePost(supabase, post.id)
-    setPost((prev) => ({ ...prev, status: 'resolved' }))
+    setResolveError(null)
+    try {
+      await resolvePost(supabase, post.id)
+      setPost((prev) => ({ ...prev, status: 'resolved' }))
+    } catch (err) {
+      setResolveError(err.message)
+    }
   }
 
   function handleContact() {
@@ -209,6 +215,11 @@ export default function PostDetailPage() {
       {isOwner && post.status !== 'resolved' && (
         <div className="status-update-prompt">
           <p className="status-update-question">Is this post still active?</p>
+          {resolveError && (
+            <p className="status-update-error" role="alert">
+              {resolveError}
+            </p>
+          )}
           <button type="button" className="status-update-confirm-button" onClick={handleResolve}>
             {isMissing ? 'Mark as found' : 'Mark as reunited'}
           </button>

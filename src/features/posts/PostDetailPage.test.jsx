@@ -51,6 +51,18 @@ test('owner sees a neutral status-update prompt for a missing pet and marking it
   expect(postsApi.resolvePost).toHaveBeenCalledWith(expect.anything(), 'p1')
 })
 
+test('shows an inline error and keeps the post active when resolve fails', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.resolvePost.mockRejectedValueOnce(new Error('network error'))
+  renderAtPost('p1')
+
+  await waitFor(() => screen.getByText(/Missing: cat/))
+  await userEvent.click(screen.getByRole('button', { name: 'Mark as found' }))
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('network error')
+  expect(screen.getByText('Is this post still active?')).toBeInTheDocument()
+})
+
 test('status-update prompt uses "reunited" wording for a found-pet post', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
   postsApi.getPost.mockResolvedValueOnce({

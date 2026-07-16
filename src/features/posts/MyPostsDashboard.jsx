@@ -17,6 +17,7 @@ export default function MyPostsDashboard() {
   const navigate = useNavigate()
   const [posts, setPosts] = useState(null)
   const [error, setError] = useState(null)
+  const [actionError, setActionError] = useState(null)
 
   useEffect(() => {
     // Wait for the initial session check (AuthContext's `loading`) before
@@ -56,24 +57,39 @@ export default function MyPostsDashboard() {
   }, [user, authLoading, navigate])
 
   async function handleRenew(postId) {
-    await renewPost(supabase, postId)
-    setPosts((prev) =>
-      prev.map((post) => (post.id === postId ? { ...post, renewed_at: new Date().toISOString() } : post))
-    )
+    setActionError(null)
+    try {
+      await renewPost(supabase, postId)
+      setPosts((prev) =>
+        prev.map((post) => (post.id === postId ? { ...post, renewed_at: new Date().toISOString() } : post))
+      )
+    } catch (err) {
+      setActionError(err.message)
+    }
   }
 
   async function handleRemove(postId) {
     const confirmed = window.confirm('Remove this post? This cannot be undone.')
     if (!confirmed) return
-    await deletePost(supabase, postId)
-    setPosts((prev) => prev.filter((post) => post.id !== postId))
+    setActionError(null)
+    try {
+      await deletePost(supabase, postId)
+      setPosts((prev) => prev.filter((post) => post.id !== postId))
+    } catch (err) {
+      setActionError(err.message)
+    }
   }
 
   async function handleBump(postId) {
-    await bumpPost(supabase, postId)
-    setPosts((prev) =>
-      prev.map((post) => (post.id === postId ? { ...post, bumped_at: new Date().toISOString() } : post))
-    )
+    setActionError(null)
+    try {
+      await bumpPost(supabase, postId)
+      setPosts((prev) =>
+        prev.map((post) => (post.id === postId ? { ...post, bumped_at: new Date().toISOString() } : post))
+      )
+    } catch (err) {
+      setActionError(err.message)
+    }
   }
 
   if (authLoading || !user) return <p>Loading...</p>
@@ -88,6 +104,12 @@ export default function MyPostsDashboard() {
   return (
     <div>
       <h2>My Posts</h2>
+
+      {actionError && (
+        <p className="my-posts-action-error" role="alert">
+          {actionError}
+        </p>
+      )}
 
       {posts.length === 0 && (
         <p className="browse-empty">
