@@ -15,6 +15,7 @@ vi.mock('react-router-dom', async () => {
 vi.mock('./postsApi.js', () => ({
   listPostsByOwner: vi.fn(() => Promise.resolve([])),
   deletePost: vi.fn(() => Promise.resolve()),
+  deletePosts: vi.fn(() => Promise.resolve()),
   renewPost: vi.fn(() => Promise.resolve()),
   bumpPost: vi.fn(() => Promise.resolve()),
 }))
@@ -119,7 +120,45 @@ test('auto-deletes and hides an active post that has already passed its expiry d
   ])
   renderDashboard()
 
-  await waitFor(() => expect(postsApi.deletePost).toHaveBeenCalledWith(expect.anything(), 'expired'))
+  await waitFor(() => expect(postsApi.deletePosts).toHaveBeenCalledWith(expect.anything(), ['expired']))
+  expect(postsApi.deletePost).not.toHaveBeenCalled()
+  expect(screen.queryByText(/Missing: cat/)).not.toBeInTheDocument()
+})
+
+test('sweeps multiple expired active posts in a single batched delete call', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    { id: 'expired-1', type: 'missing', species: 'cat', status: 'active', post_photos: [], renewed_at: daysAgo(61), bumped_at: daysAgo(61) },
+    { id: 'expired-2', type: 'found', species: 'dog', status: 'active', post_photos: [], renewed_at: daysAgo(90), bumped_at: daysAgo(90) },
+    { id: 'still-active', type: 'missing', species: 'bird', status: 'active', post_photos: [], renewed_at: daysAgo(1), bumped_at: daysAgo(1) },
+  ])
+  renderDashboard()
+
+  await waitFor(() =>
+    expect(postsApi.deletePosts).toHaveBeenCalledWith(expect.anything(), ['expired-1', 'expired-2'])
+  )
+  expect(postsApi.deletePost).not.toHaveBeenCalled()
+  expect(await screen.findByText(/Missing: bird/)).toBeInTheDocument()
+})
+
+test('does not fail the whole page when the sweep delete fails', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' }, loading: false })
+  postsApi.listPostsByOwner.mockResolvedValueOnce([
+    {
+      id: 'expired',
+      type: 'missing',
+      species: 'cat',
+      status: 'active',
+      post_photos: [],
+      renewed_at: daysAgo(61),
+      bumped_at: daysAgo(61),
+    },
+  ])
+  postsApi.deletePosts.mockRejectedValueOnce(new Error('network error'))
+  renderDashboard()
+
+  await waitFor(() => expect(postsApi.deletePosts).toHaveBeenCalled())
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   expect(screen.queryByText(/Missing: cat/)).not.toBeInTheDocument()
 })
 

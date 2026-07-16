@@ -4,6 +4,7 @@ export function createFakeQuery(result) {
     order: () => query,
     eq: () => query,
     neq: () => query,
+    in: () => query,
     insert: () => query,
     update: () => query,
     delete: () => query,

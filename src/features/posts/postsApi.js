@@ -71,6 +71,32 @@ export async function deletePost(supabase, postId) {
   if (error) throw error
 }
 
+// Batched sibling of deletePost, used by MyPostsDashboard's lazy expiry
+// sweep (see postExpiry.js) — deletes every id in one request instead of
+// one deletePost call per expired post, both for efficiency and so a sweep
+// with multiple expired posts either succeeds or fails as a single unit
+// rather than partially succeeding across N parallel calls. Mirrors
+// deletePost's storage-cleanup behavior (see its comment above), batched
+// across all ids via .in() instead of one post at a time.
+export async function deletePosts(supabase, postIds) {
+  if (postIds.length === 0) return
+
+  const { data: photos, error: photosError } = await supabase
+    .from('post_photos')
+    .select('storage_path')
+    .in('post_id', postIds)
+  if (photosError) throw photosError
+
+  const storagePaths = (photos || []).map((photo) => photo.storage_path)
+  if (storagePaths.length > 0) {
+    const { error: removeError } = await supabase.storage.from('post-photos').remove(storagePaths)
+    if (removeError) throw removeError
+  }
+
+  const { error } = await supabase.from('posts').delete().in('id', postIds)
+  if (error) throw error
+}
+
 export async function listPostsByOwner(supabase, ownerId) {
   const { data, error } = await supabase
     .from('posts')

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabaseClient.js'
-import { listPostsByOwner, deletePost, renewPost, bumpPost } from './postsApi.js'
+import { listPostsByOwner, deletePost, deletePosts, renewPost, bumpPost } from './postsApi.js'
 import { useAuth } from '../auth/AuthContext.jsx'
 import { isExpired, isExpiringSoon, daysUntilExpiry } from './postExpiry.js'
 import { canBump, hoursUntilNextBump } from './postBump.js'
@@ -30,16 +30,26 @@ export default function MyPostsDashboard() {
     listPostsByOwner(supabase, user.id)
       .then(async (fetchedPosts) => {
         // Lazy expiry sweep: this app has no backend scheduler (see
-        // postExpiry.js), so an expired active post only actually gets
-        // deleted the next time the owner's own dashboard loads. Browse
-        // already hides expired posts immediately regardless (see
-        // filterPosts.js) — this is what makes that eventually consistent.
+        // postExpiry.js), so expired active posts only actually get deleted
+        // the next time the owner's own dashboard loads. Browse already hides
+        // expired posts immediately regardless (see filterPosts.js) — this is
+        // what makes that eventually consistent. The sweep itself is a single
+        // batched delete (not one call per post) so a transient failure here
+        // can't take down the whole page — it's caught locally and only
+        // affects whether the sweep's own cleanup happened, not the posts
+        // list that's about to render.
         const now = new Date()
         const expired = fetchedPosts.filter((post) => post.status === 'active' && isExpired(post, now))
-        if (expired.length > 0) {
-          await Promise.all(expired.map((post) => deletePost(supabase, post.id)))
-        }
         const expiredIds = new Set(expired.map((post) => post.id))
+        if (expired.length > 0) {
+          try {
+            await deletePosts(supabase, expired.map((post) => post.id))
+          } catch {
+            // Non-fatal: the posts are still hidden from view below (and
+            // already hidden from Browse via filterPosts.js) even if the
+            // actual delete failed — the next dashboard load will retry.
+          }
+        }
         setPosts(fetchedPosts.filter((post) => !expiredIds.has(post.id)))
       })
       .catch((err) => setError(err.message))

@@ -6,6 +6,7 @@ import {
   resolvePost,
   listCandidatePostsForMatching,
   deletePost,
+  deletePosts,
   listPostsByOwner,
   renewPost,
   bumpPost,
@@ -74,6 +75,44 @@ test('deletePost skips the storage remove call when the post has no photos', asy
 
   await expect(deletePost(supabase, 'p1')).resolves.toBeUndefined()
   expect(removeFn).not.toHaveBeenCalled()
+})
+
+test('deletePosts removes the storage files for every post before batch-deleting the post rows', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const photosQuery = createFakeQuery({ data: [{ storage_path: 'p1/dog.jpg' }, { storage_path: 'p2/cat.jpg' }], error: null })
+  const removeFn = vi.fn(() => Promise.resolve({ error: null }))
+  const supabase = createFakeSupabase({
+    posts: postsQuery,
+    post_photos: photosQuery,
+    storage: { 'post-photos': { upload: vi.fn(), remove: removeFn } },
+  })
+
+  await expect(deletePosts(supabase, ['p1', 'p2'])).resolves.toBeUndefined()
+  expect(removeFn).toHaveBeenCalledWith(['p1/dog.jpg', 'p2/cat.jpg'])
+})
+
+test('deletePosts skips the storage remove call when none of the posts have photos', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const photosQuery = createFakeQuery({ data: [], error: null })
+  const removeFn = vi.fn(() => Promise.resolve({ error: null }))
+  const supabase = createFakeSupabase({
+    posts: postsQuery,
+    post_photos: photosQuery,
+    storage: { 'post-photos': { upload: vi.fn(), remove: removeFn } },
+  })
+
+  await expect(deletePosts(supabase, ['p1', 'p2'])).resolves.toBeUndefined()
+  expect(removeFn).not.toHaveBeenCalled()
+})
+
+test('deletePosts is a no-op when given an empty array', async () => {
+  const postsQuery = createFakeQuery({ data: null, error: null })
+  const photosQuery = createFakeQuery({ data: [], error: null })
+  const supabase = createFakeSupabase({ posts: postsQuery, post_photos: photosQuery })
+  const fromSpy = vi.spyOn(supabase, 'from')
+
+  await expect(deletePosts(supabase, [])).resolves.toBeUndefined()
+  expect(fromSpy).not.toHaveBeenCalled()
 })
 
 test('listPostsByOwner returns posts belonging to the given owner', async () => {
