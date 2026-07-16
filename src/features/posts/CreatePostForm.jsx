@@ -114,6 +114,7 @@ export default function CreatePostForm() {
   const [files, setFiles] = useState([])
   const [previewUrls, setPreviewUrls] = useState([])
   const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisError, setAnalysisError] = useState(null)
   const [undetectedFields, setUndetectedFields] = useState([])
@@ -227,6 +228,8 @@ export default function CreatePostForm() {
       setError('Please choose a location on the map before posting.')
       return
     }
+    if (submitting) return
+    setSubmitting(true)
     try {
       const photoEmbedding = photoEmbeddingPromiseRef.current
         ? await photoEmbeddingPromiseRef.current
@@ -249,6 +252,7 @@ export default function CreatePostForm() {
       navigate(`/post/${post.id}`)
     } catch (err) {
       setError(err.message)
+      setSubmitting(false)
     }
   }
 
@@ -621,8 +625,8 @@ export default function CreatePostForm() {
         </div>
       </div>
 
-      <button type="submit" className="form-submit">
-        Create post
+      <button type="submit" className="form-submit" disabled={submitting}>
+        {submitting ? 'Creating post…' : 'Create post'}
       </button>
     </form>
   )

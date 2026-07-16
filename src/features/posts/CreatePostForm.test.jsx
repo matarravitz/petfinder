@@ -53,6 +53,44 @@ test('submits a missing-pet post with the entered fields and the chosen map loca
   )
 })
 
+test('disables the submit button and prevents a second submission while creating a post', async () => {
+  useAuth.mockReturnValue({ user: { id: 'owner-1' } })
+  postsApi.createPost.mockClear()
+  let resolveCreatePost
+  postsApi.createPost.mockReturnValue(
+    new Promise((resolve) => {
+      resolveCreatePost = resolve
+    })
+  )
+
+  render(
+    <MemoryRouter>
+      <CreatePostForm />
+    </MemoryRouter>
+  )
+
+  await userEvent.click(screen.getByRole('radio', { name: 'Missing pet' }))
+  await userEvent.selectOptions(screen.getByLabelText('Species'), 'cat')
+  await userEvent.click(screen.getByText('Pick a location (test stub)'))
+  await userEvent.type(screen.getByLabelText('Date lost/found'), '2026-07-01')
+  await userEvent.click(screen.getByText('Create post'))
+
+  expect(await screen.findByRole('button', { name: 'Creating post…' })).toBeDisabled()
+  expect(postsApi.createPost).toHaveBeenCalledTimes(1)
+
+  // A second click while still pending must not trigger a second call —
+  // the button is disabled, so this simulates the guard, not just the UI.
+  await userEvent.click(screen.getByRole('button', { name: 'Creating post…' }))
+  expect(postsApi.createPost).toHaveBeenCalledTimes(1)
+
+  resolveCreatePost({ id: 'p1' })
+  await waitFor(() => expect(postsApi.createPost).toHaveBeenCalledTimes(1))
+  // mockReturnValue overrides the module's default implementation until
+  // reset — restore it so later tests get a fresh auto-resolving promise
+  // per call, matching the vi.mock() factory's default behavior.
+  postsApi.createPost.mockImplementation(() => Promise.resolve({ id: 'p1' }))
+})
+
 test('shows an error and does not submit when no location has been chosen on the map', async () => {
   useAuth.mockReturnValue({ user: { id: 'owner-1' } })
   postsApi.createPost.mockClear()
