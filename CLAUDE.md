@@ -49,6 +49,24 @@ VITE_SUPABASE_ANON_KEY=<from `supabase status`>
 SUPABASE_SERVICE_ROLE_KEY=<from `supabase status`>  # scripts/*.mjs only; never expose to the browser
 ```
 
+`.gitignore` covers `.env.local` and the wildcard `.env*.local` (Vite's convention) — always use one of those two shapes for any new local env file, never a bare name that wouldn't match.
+
+## Deployment (production)
+
+**Status:** in progress, started 2026-07-16/17. Design + plan docs are the source of truth for the full sequence — read them before continuing this work in a future session:
+- `docs/superpowers/specs/2026-07-16-production-deployment-design.md` — the design (Supabase Cloud + Vercel, why `window.location.origin` doesn't work in production)
+- `docs/superpowers/plans/2026-07-16-production-deployment.md` — the task-by-task plan, with `[USER]`/`[ASSISTANT]` tags on every step and a checklist of what's done
+
+**Production Supabase project:** ref `ulfathyhapwphaqtujjr`, URL `https://ulfathyhapwphaqtujjr.supabase.co`, under the `matarravitz` Supabase account (separate from local dev's `supabase start` stack). All 9 migrations (`0001`-`0009`) are pushed and verified against it as of 2026-07-17.
+
+**Credential files this process created, outside of what `.env.local` already covers — neither is committed, both are machine-local:**
+- `/home/ubuntu/Projects/petfinder/.env.production.local` — `VITE_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` for the **production** Supabase project (mirrors `.env.local`'s shape, but points at `ulfathyhapwphaqtujjr` instead of the local stack). Used to run `scripts/verify-schema.mjs` against production; not read by the app itself. Load it with `export $(cat .env.production.local | xargs)` in the same shell invocation as the command that needs it — do **not** wrap it in `env VAR=val cmd`, since `nvm` is a shell function, not a binary, and `env` can't exec it directly.
+- `~/.supabase_access_token` (outside the repo, home directory) — a Supabase personal access token (from supabase.com/dashboard/account/tokens), needed because `supabase db push`/`migration list` require `SUPABASE_ACCESS_TOKEN` set explicitly even after `supabase login` already succeeded for other CLI commands (a CLI quirk, not expected/documented behavior). Export it via `export SUPABASE_ACCESS_TOKEN=$(cat ~/.supabase_access_token)` before any `supabase db push`/`migration list`/similar.
+
+**GitHub remote:** this repo pushes to `github.com/matarravitz/petfinder` via the `github-matar` SSH host alias (see `~/.ssh/config`) — a second SSH key (`~/.ssh/id_ed25519_Matar`, no passphrase) kept deliberately separate from the original RozenBB key so both accounts keep working from this machine. Vercel deployment reads from this same GitHub repo.
+
+**Vercel:** not yet deployed as of this note — see the plan's Task 5 for remaining steps (connect repo, set `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` env vars, confirm Node 22, get the live URL, then update Supabase Auth's redirect URLs with it).
+
 ## Architecture
 
 ```

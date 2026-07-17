@@ -21,10 +21,12 @@
 
 **Files:** none (external setup only).
 
-- [ ] **Step 1 [USER]:** Go to https://supabase.com, sign up or log in, create a new project (any name/region you like — e.g. "petfinder-production"). Choose a database password and **save it somewhere safe** (you likely won't need it directly, Supabase manages connections, but it's good practice to keep).
-- [ ] **Step 2 [USER]:** Once the project finishes provisioning (a minute or two), go to Project Settings → API. You'll need three values from this page for later steps: the **Project URL**, the **anon/public key**, and the **service_role key**. Keep this tab open or copy these somewhere for the next tasks — tell me the Project URL and anon key when you have them (those two are safe to share in chat). **Do not paste the service_role key into chat** — you'll use it directly yourself in Task 4.
+- [x] **Step 1 [USER]:** Go to https://supabase.com, sign up or log in, create a new project (any name/region you like — e.g. "petfinder-production"). Choose a database password and **save it somewhere safe** (you likely won't need it directly, Supabase manages connections, but it's good practice to keep).
+- [x] **Step 2 [USER]:** Once the project finishes provisioning (a minute or two), go to Project Settings → API. You'll need three values from this page for later steps: the **Project URL**, the **anon/public key**, and the **service_role key**. Keep this tab open or copy these somewhere for the next tasks — tell me the Project URL and anon key when you have them (those two are safe to share in chat). **Do not paste the service_role key into chat** — you'll use it directly yourself in Task 4.
 
 **Verify:** You can see "Project is ready" (or equivalent) in the Supabase dashboard, and have the Project URL + anon key on hand.
+
+**Done 2026-07-17.** Project ref `ulfathyhapwphaqtujjr`, URL `https://ulfathyhapwphaqtujjr.supabase.co`, under the `matarravitz` Supabase account.
 
 ---
 
@@ -32,7 +34,7 @@
 
 **Files:** none (CLI operations against the existing `supabase/migrations/*.sql` files, unchanged).
 
-- [ ] **Step 1 [USER]:** The Supabase CLI needs to authenticate as you. Run this yourself (it opens a browser login flow) rather than through the assistant:
+- [x] **Step 1 [USER]:** The Supabase CLI needs to authenticate as you. Run this yourself (it opens a browser login flow) rather than through the assistant:
   ```
   supabase login
   ```
@@ -40,7 +42,7 @@
 
   **Verify:** `supabase projects list` shows your new project.
 
-- [ ] **Step 2 [ASSISTANT]:** Once logged in, link this repo to the project and push all 9 existing migrations:
+- [x] **Step 2 [ASSISTANT]:** Once logged in, link this repo to the project and push all 9 existing migrations:
   ```bash
   cd /home/ubuntu/Projects/petfinder
   supabase link --project-ref <project-ref-from-project-url>
@@ -50,7 +52,9 @@
 
   **Verify:** `supabase db push` reports all 9 migrations (`0001` through `0009`) applied with no errors. In the Supabase dashboard's Table Editor, confirm the `posts`, `profiles`, `post_photos` tables exist with the expected columns.
 
-- [ ] **Step 3 [ASSISTANT]:** Confirm grants/RLS are correct against the real project (same script used for local dev, just pointed at production). This needs a temporary local file with the production service-role key — see the note below.
+  **Gotcha hit 2026-07-17:** `supabase db push` failed with "Access token not provided" even though `supabase login` had already succeeded (proven by `projects list`/`link` working) — this CLI version (`2.109.1`) doesn't persist a token that `db push` itself reads. Fix: generate a personal access token at the URL above, save it to `~/.supabase_access_token` (outside the repo, gitignored by location), and `export SUPABASE_ACCESS_TOKEN=$(cat ~/.supabase_access_token)` before `db push`/`migration list`. Documented in `CLAUDE.md`'s new Deployment section.
+
+- [x] **Step 3 [ASSISTANT]:** Confirm grants/RLS are correct against the real project (same script used for local dev, just pointed at production). This needs a temporary local file with the production service-role key — see the note below.
 
   **Verify [USER, one-time setup]:** Create `/home/ubuntu/Projects/petfinder/.env.production.local` yourself (this filename matches Vite's convention for a git-ignored env file — confirm `.gitignore` covers `.env*.local`, add it if not) with:
   ```
@@ -62,9 +66,14 @@
   **Verify [ASSISTANT]:** Run `scripts/verify-schema.mjs` against it:
   ```bash
   cd /home/ubuntu/Projects/petfinder
-  env $(cat .env.production.local | xargs) nvm exec 22 node scripts/verify-schema.mjs
+  export $(cat .env.production.local | xargs)
+  nvm exec 22 node scripts/verify-schema.mjs
   ```
   Expected: `Schema check passed. Cleaning up...` then `OK`.
+
+  **Gotcha hit 2026-07-17:** the plan's original one-liner (`env $(cat ...) nvm exec ...`) fails with `env: 'nvm': Permission denied` — `nvm` is a shell function (sourced via `.bashrc`), not a real executable, so `env` can't exec it directly. Use plain `export` in the same shell invocation instead, as corrected above.
+
+  **Done 2026-07-17:** `Schema check passed. Cleaning up... OK` — confirmed against the real `ulfathyhapwphaqtujjr` project.
 
 ---
 
@@ -89,7 +98,7 @@
 - Consumes: Vite's built-in `import.meta.env.PROD` (boolean, `true` in production build) and a new `import.meta.env.VITE_SUPABASE_URL` (only read when `PROD` is true).
 - Produces: no change to either module's exports — `supabase` client instance and `buildPhotoUrl` keep the same shape/signature.
 
-- [ ] **Step 1 [ASSISTANT]: Read the current implementation**
+- [x] **Step 1 [ASSISTANT]: Read the current implementation**
 
   `src/lib/supabaseClient.js` currently:
   ```js
@@ -98,7 +107,7 @@
   export const supabase = createClient(window.location.origin, import.meta.env.VITE_SUPABASE_ANON_KEY)
   ```
 
-- [ ] **Step 2 [ASSISTANT]: Make the base URL environment-aware**
+- [x] **Step 2 [ASSISTANT]: Make the base URL environment-aware**
 
   ```js
   import { createClient } from '@supabase/supabase-js'
@@ -116,29 +125,31 @@
 
   **Verify:** `grep -n "PROD" src/lib/supabaseClient.js` → one match.
 
-- [ ] **Step 3 [ASSISTANT]: Read and apply the same change to photoUrl.js**
+- [x] **Step 3 [ASSISTANT]: Read and apply the same change to photoUrl.js**
 
   Read the current content of `src/lib/photoUrl.js` first (it builds public storage URLs the same way, off `window.location.origin`), then apply the identical `import.meta.env.PROD` conditional so both files stay consistent.
 
   **Verify:** `grep -n "PROD" src/lib/photoUrl.js` → one match.
 
-- [ ] **Step 4 [ASSISTANT]: Confirm existing tests are unaffected**
+- [x] **Step 4 [ASSISTANT]: Confirm existing tests are unaffected**
 
   Vitest does not set `import.meta.env.PROD` to `true` during `vitest run` (it defaults to `false`, matching dev mode), so every existing test exercising these modules continues to hit the `window.location.origin` branch exactly as before — no test changes needed.
 
   **Verify:** `npm test -- photoUrl supabaseClient` → all existing tests still pass, same count as before this change.
 
-- [ ] **Step 5 [ASSISTANT]: Full suite + build**
+- [x] **Step 5 [ASSISTANT]: Full suite + build**
 
   **Verify:** `npm test` → all tests pass (228, unchanged). `npm run build` → exit 0.
 
-- [ ] **Step 6 [ASSISTANT]: Commit**
+- [x] **Step 6 [ASSISTANT]: Commit**
 
   ```bash
   git add src/lib/supabaseClient.js src/lib/photoUrl.js
   git commit -m "Use a direct Supabase URL in production, keep the dev-proxy origin locally"
   git push
   ```
+
+  **Done 2026-07-17.** Commit `60c76c5`, pushed to `origin/master`.
 
 ---
 
