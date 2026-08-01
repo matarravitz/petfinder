@@ -51,6 +51,8 @@ SUPABASE_SERVICE_ROLE_KEY=<from `supabase status`>  # scripts/*.mjs only; never 
 
 `.gitignore` covers `.env.local` and the wildcard `.env*.local` (Vite's convention) — always use one of those two shapes for any new local env file, never a bare name that wouldn't match.
 
+**`.env.test` (committed, dummy values only — not gitignored, unlike the files above):** several components (e.g. `PostDetailPage.jsx`) import the real `src/lib/supabaseClient.js`, which calls `createClient()` at module-eval time and throws `"supabaseKey is required"` if the anon key is missing — even though these tests never make a real Supabase call (the API layer is mocked). Vite/Vitest defaults to `mode: 'test'` and auto-loads `.env.test` in addition to `.env`/`.env.local`, so this file exists purely to give `createClient()` a non-empty placeholder string in any environment without a real `.env.local` — critically, **CI** (`.github/workflows/ci.yml` checks out a fresh repo, so `.env.local` is never present there). This bit once already: CI's `npm test` step failed on every push until this file existed. Verify this mechanism still works after touching it by temporarily `mv`-ing `.env.local` aside and confirming `npm test` still passes — that's the actual CI condition, not just "the file exists."
+
 ## Deployment (production)
 
 **Status:** in progress, started 2026-07-16/17. Design + plan docs are the source of truth for the full sequence — read them before continuing this work in a future session:
