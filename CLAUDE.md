@@ -67,6 +67,8 @@ SUPABASE_SERVICE_ROLE_KEY=<from `supabase status`>  # scripts/*.mjs only; never 
 
 **Vercel:** not yet deployed as of this note — see the plan's Task 5 for remaining steps (connect repo, set `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` env vars, confirm Node 22, get the live URL, then update Supabase Auth's redirect URLs with it).
 
+**Free-tier auto-pause:** Supabase Cloud pauses free-tier projects after ~7 days with no activity — this already happened once (2026-08-01, before Vercel was even deployed, since nothing was hitting the project). Fixed going forward with `.github/workflows/keep-supabase-awake.yml`, a scheduled GitHub Action that queries the `posts` table every 3 days using the anon key (safe to expose — it's the same key already meant to ship in the client bundle) to register activity. Requires a `PRODUCTION_SUPABASE_ANON_KEY` repository secret (GitHub repo Settings → Secrets and variables → Actions), set from the Supabase dashboard's Project Settings → API → anon/public key — not committed anywhere. This is not an officially documented/guaranteed mechanism (Supabase doesn't publish exact pause-detection criteria), just a widely-used workaround; if it ever stops working, the real fixes are Supabase Pro (removes the pause entirely) or self-hosting.
+
 ## Architecture
 
 ```
